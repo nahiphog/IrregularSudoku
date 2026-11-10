@@ -6,7 +6,7 @@
   "license": "GPL-3.0-only",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "node scripts/source.mjs && tsc --noEmit && vite build",
+    "build": "node scripts/source.mjs && tsc --noEmit && vite build && node scripts/static-routes.mjs",
     "test": "tsx --test tests/*.test.ts",
     "preview": "vite preview --host 127.0.0.1"
   },

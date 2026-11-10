@@ -7,16 +7,22 @@ import { TECHS, ALL_TECHS } from '../vendor/sudokui/engine/ratings';
 import { TECH_DOCS } from '../vendor/sudokui/content/techniqueDocs';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
-const isGuide = location.pathname.startsWith('/techniques');
+const base = import.meta.env.BASE_URL;
+const isGuide = location.pathname.startsWith(`${base}techniques`);
 const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
-app.innerHTML = `<header><a class="brand" href="/" aria-label="Irregular Sudoku home"><span class="brand-icon">▦</span> irregular<span class="brand-dot">.</span></a><nav aria-label="Main navigation"><a href="/" ${!isGuide ? 'aria-current="page"' : ''}>Puzzle studio</a><a href="/techniques" ${isGuide ? 'aria-current="page"' : ''}>Techniques <span class="nav-count">${ALL_TECHS.length}</span></a></nav><span class="header-note">A little outside the box.</span></header><main id="main"></main><footer><span>Nine digits. Nine regions. A different perspective.</span><span>Built with TypeScript · <a href="/techniques#attribution">Open-source credits</a> · <a href="/source.zip" download>Source code</a></span></footer>`;
+app.innerHTML = `<header><a class="brand" href="/" aria-label="Irregular Sudoku home"><span class="brand-icon">▦</span> irregular<span class="brand-dot">.</span></a><nav aria-label="Main navigation"><a href="/" ${!isGuide ? 'aria-current="page"' : ''}>Puzzle studio</a><a href="/techniques" ${isGuide ? 'aria-current="page"' : ''}>Techniques <span class="nav-count">${ALL_TECHS.length}</span></a></nav><span class="header-note">A little outside the box.</span></header><main id="main"></main><footer><span>Nine digits. Nine regions. A different perspective.</span><span>Built with TypeScript · <a href="/techniques#attribution">Open-source credits</a> · <a href="/source.tar.gz" download>Source code</a></span></footer>`;
 const main = document.querySelector<HTMLElement>('#main')!;
 
 if (isGuide) renderGuide(); else renderStudio();
+// Keep navigation and downloads within either the site root or a Pages project path.
+document.querySelectorAll<HTMLAnchorElement>('a[href^="/"]').forEach(a => {
+  const path = a.getAttribute('href')!.slice(1).replace(/^techniques(?=#|$)/, 'techniques/');
+  a.href = base + path;
+});
 
 function renderGuide() {
   document.title = 'Techniques — Irregular Sudoku';
-  main.innerHTML = `<section class="intro"><p class="eyebrow">THE SOLVER’S BOOKSHELF</p><h1>A little logic goes a long way.</h1><p class="lede">Explore the complete sudokUI technique library, from your first single to the most intricate chains.</p></section><div class="guide-note"><strong>Classic foundations. Irregular possibilities.</strong><p>This is the original classic Sudoku reference. Singles, subsets and peer-based logic can use irregular regions as houses. Patterns relying on 3 × 3 boxes, bands or stacks need separate verification; uniqueness techniques require a proven unique solution. The studio uses its own region-aware search solver, not these classic finders.</p></div><section class="library"><div class="filters"><label>Find a technique<input id="search" type="search" placeholder="Try ‘pair’, ‘wing’ or ‘chain’…"/></label><label>Difficulty<select id="level"><option value="">All levels</option>${['Easy', 'Medium', 'Hard', 'Unfair', 'Extreme'].map(s => `<option>${s}</option>`).join('')}</select></label><label>Family<select id="family"><option value="">All families</option>${[...new Set(ALL_TECHS.map(k => TECHS[k].category))].map(s => `<option>${s}</option>`).join('')}</select></label></div><p id="result-count" class="muted" role="status"></p><div id="techniques"></div></section><aside id="attribution" class="attribution"><h2>Made possible by open source.</h2><p>All ${ALL_TECHS.length} technique descriptions and the original classic engine are imported from <a href="https://github.com/AImenes/sudokUI">AImenes/sudokUI</a>, commit <code>cf7ce55</code>. Original text and implementation status are preserved. “Implemented” refers to the upstream classic engine, not an irregular hint engine.</p><p>Licensed under <a href="/sudokui-LICENSE.txt">GPL-3.0</a>. <a href="/source.zip" download>Download the complete source</a>, including the imported techniques and attribution.</p></aside>`;
+  main.innerHTML = `<section class="intro"><p class="eyebrow">THE SOLVER’S BOOKSHELF</p><h1>A little logic goes a long way.</h1><p class="lede">Explore the complete sudokUI technique library, from your first single to the most intricate chains.</p></section><div class="guide-note"><strong>Classic foundations. Irregular possibilities.</strong><p>This is the original classic Sudoku reference. Singles, subsets and peer-based logic can use irregular regions as houses. Patterns relying on 3 × 3 boxes, bands or stacks need separate verification; uniqueness techniques require a proven unique solution. The studio uses its own region-aware search solver, not these classic finders.</p></div><section class="library"><div class="filters"><label>Find a technique<input id="search" type="search" placeholder="Try ‘pair’, ‘wing’ or ‘chain’…"/></label><label>Difficulty<select id="level"><option value="">All levels</option>${['Easy', 'Medium', 'Hard', 'Unfair', 'Extreme'].map(s => `<option>${s}</option>`).join('')}</select></label><label>Family<select id="family"><option value="">All families</option>${[...new Set(ALL_TECHS.map(k => TECHS[k].category))].map(s => `<option>${s}</option>`).join('')}</select></label></div><p id="result-count" class="muted" role="status"></p><div id="techniques"></div></section><aside id="attribution" class="attribution"><h2>Made possible by open source.</h2><p>All ${ALL_TECHS.length} technique descriptions and the original classic engine are imported from <a href="https://github.com/AImenes/sudokUI">AImenes/sudokUI</a>, commit <code>cf7ce55</code>. Original text and implementation status are preserved. “Implemented” refers to the upstream classic engine, not an irregular hint engine.</p><p>Licensed under <a href="/sudokui-LICENSE.txt">GPL-3.0</a>. <a href="/source.tar.gz" download>Download the complete source</a>, including the imported techniques and attribution.</p></aside>`;
   function filter() {
     const query = document.querySelector<HTMLInputElement>('#search')!.value.toLowerCase();
     const level = document.querySelector<HTMLSelectElement>('#level')!.value;
@@ -47,7 +53,8 @@ function renderStudio() {
   const walkthroughHost = document.createElement('div');
   document.querySelector('.principles')!.before(walkthroughHost);
   const walkView = mountWalkthrough(walkthroughHost, () => run('analyze'));
-  document.querySelector('.control-card > p:not(.eyebrow)')!.textContent = 'Create a completed grid, then dig away clues one by one while preserving exactly one solution. Every remaining clue is essential.';
+  document.querySelector('.control-card > p:not(.eyebrow)')!.textContent = 'Create a completed grid, then remove clues while preserving exactly one solution. Choose the symmetry for your next puzzle.';
+  document.querySelector('#generate')!.insertAdjacentHTML('beforebegin', '<div class="generation-options"><label><input id="symmetric-regions" type="checkbox" checked/> 180° symmetric regions</label><label><input id="paired-digging" type="checkbox" checked/> Dig opposite cells in pairs</label><p>Applies to the next generation. Region symmetry concerns boundaries; the center clue is tested once.</p></div>');
   board.insertAdjacentHTML('beforebegin', '<div id="generation-stats" class="generation-stats" aria-live="polite"></div>');
   document.querySelector('.file-actions')!.insertAdjacentHTML('beforebegin', '<div class="copy-actions"><button id="copy-string">Copy string</button><button id="copy-image">Copy image</button></div><p class="copy-help">String: 81 region IDs (1–9) + 81 digits (0 = blank). Image follows the region colors setting.</p><div id="copy-fallback" hidden><label for="grid-string">Select and copy this grid string:</label><textarea id="grid-string" readonly rows="4"></textarea></div>');
   const status = (s: string, error = false) => { const el = document.querySelector('#status')!; el.textContent = s; el.classList.toggle('error', error); };
@@ -68,7 +75,7 @@ function renderStudio() {
     stats.textContent = `9 regions (cages) · ${puzzle.values.filter(Boolean).length} givens${puzzle.generation ? ` · Generated in ${(puzzle.generation.elapsedMs / 1000).toFixed(2)} s` : ''}`;
     document.querySelector('.board-heading > span:first-child')!.textContent = puzzle.generation ? 'DUG-IRREGULAR GRID' : 'YOUR CANVAS';
     document.querySelector('#selection')!.textContent = selected < 0 ? 'Select a cell to begin' : `Row ${Math.floor(selected / 9) + 1} · Column ${selected % 9 + 1} · Region ${puzzle.regions[selected] + 1}`;
-    for (const id of ['generate', 'blank', 'solve', 'import', 'export', 'copy-string', 'copy-image']) (document.getElementById(id) as HTMLButtonElement).disabled = busy;
+    for (const id of ['generate', 'blank', 'solve', 'import', 'export', 'copy-string', 'copy-image', 'symmetric-regions', 'paired-digging']) (document.getElementById(id) as HTMLButtonElement).disabled = busy;
     (document.querySelector('#copy-fallback') as HTMLElement).hidden = true;
     (document.querySelector('#undo') as HTMLButtonElement).disabled = busy || !history.length;
     document.querySelectorAll<HTMLButtonElement>('[data-digit]').forEach(b => b.disabled = busy || selected < 0);
@@ -93,6 +100,7 @@ function renderStudio() {
   });
   document.querySelectorAll<HTMLButtonElement>('[data-digit]').forEach(b => b.onclick = () => enter(Number(b.dataset.digit)));
   function run(type: 'generate' | 'solve' | 'analyze') {
+    const options = { symmetricRegions: document.querySelector<HTMLInputElement>('#symmetric-regions')!.checked, pairedDigging: document.querySelector<HTMLInputElement>('#paired-digging')!.checked };
     const previous = clone(); busy = true; selected = -1; draw();
     const started = performance.now();
     const timer = window.setInterval(() => { document.querySelector('#generation-stats')!.textContent = `9 regions (cages) · ${puzzle.values.filter(Boolean).length} givens · Elapsed ${((performance.now() - started) / 1000).toFixed(1)} s`; }, 100);
@@ -108,11 +116,11 @@ function renderStudio() {
       history.push(previous); puzzle = { regions: data.regions || previous.regions, values: data.values, givens: type === 'generate' ? [...data.values] : [...(previous.givens ?? previous.values)], ...(type === 'generate' ? { generation: { elapsedMs: data.elapsedMs, clues: data.values.filter(Boolean).length } } : {}) };
       if (data.walkthrough) { traceCache.set(puzzleKey(), data.walkthrough); if (traceCache.size > 12) traceCache.delete(traceCache.keys().next().value!); }
       save(); finish();
-      status(type === 'generate' ? 'Dug-irregular grid ready. Exactly one solution; removing any remaining given would allow multiple solutions.' : 'Solved! Every row, column and region contains 1–9.');
+      status(type === 'generate' ? `Dug-irregular grid ready. Exactly one solution; removing any remaining ${options.pairedDigging ? 'opposite pair (or the center clue)' : 'given'} would allow multiple solutions.` : 'Solved! Every row, column and region contains 1–9.');
     };
     worker.onerror = () => { puzzle = previous; finish(); status('The solver could not start. Please try again.', true); };
     document.querySelector<HTMLButtonElement>('#cancel')!.onclick = () => { puzzle = previous; finish(); status('Cancelled. Your previous grid is restored.'); };
-    worker.postMessage({ type, ...previous });
+    worker.postMessage({ type, ...previous, options });
   }
   document.querySelector<HTMLButtonElement>('#generate')!.onclick = () => run('generate');
   document.querySelector<HTMLButtonElement>('#solve')!.onclick = () => run('solve');

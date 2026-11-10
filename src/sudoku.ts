@@ -3,6 +3,18 @@ export interface Puzzle { regions: Board; values: Board; givens?: Board; generat
 /** Legacy/imported grids without provenance treat their current digits as clues. */
 export const isGiven = (puzzle: Puzzle, cell: number): boolean => !!puzzle.values[cell] && (puzzle.givens ?? puzzle.values)[cell] === puzzle.values[cell];
 export const classicRegions = () => Array.from({ length: 81 }, (_, i) => Math.floor(i / 27) * 3 + Math.floor((i % 9) / 3));
+export const DEFAULT_GENERATION_OPTIONS = { symmetricRegions: true, pairedDigging: true };
+/** Symmetry concerns the region boundaries, not the arbitrary region labels. */
+export function rotationallySymmetric(regions: Board): boolean {
+  if (!validRegions(regions)) return false;
+  const partners = new Map<number, number>();
+  for (let i = 0; i < 81; i++) {
+    const a = regions[i], b = regions[80 - i];
+    if (partners.has(a) && partners.get(a) !== b) return false;
+    partners.set(a, b);
+  }
+  return true;
+}
 export const neighbors = (i: number) => [i - 9, i + 9, ...(i % 9 ? [i - 1] : []), ...(i % 9 < 8 ? [i + 1] : [])].filter(j => j >= 0 && j < 81);
 function shuffle<T>(a: T[], random = Math.random): T[] {
   for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
@@ -61,17 +73,22 @@ export function countSolutions(values: Board, regions: Board): number {
   search(); return found;
 }
 /** A failed removal never becomes possible after removing more clues, so one
- * shuffled pass proves single-clue minimality (not a global minimum clue count).
+ * shuffled pass proves single-clue or pair minimality, depending on the mode
+ * (not a global minimum clue count).
  * No search cutoff: an inconclusive search must never be treated as uniqueness.
  */
-export function dig(puzzle: Puzzle, random = Math.random, progress?: (values: Board, tested: number) => void): Puzzle {
+export function dig(puzzle: Puzzle, random = Math.random, progress?: (values: Board, tested: number) => void, paired = false): Puzzle {
   if (puzzle.values.some(v => !v) || countSolutions(puzzle.values, puzzle.regions) !== 1) throw new Error('Digging requires a valid completed grid.');
   const values = [...puzzle.values];
   let tested = 0;
-  for (const i of shuffle(Array.from({ length: 81 }, (_, i) => i), random)) {
-    const given = values[i]; values[i] = 0;
-    if (countSolutions(values, puzzle.regions) !== 1) values[i] = given;
-    progress?.([...values], ++tested);
+  for (const i of shuffle(Array.from({ length: paired ? 41 : 81 }, (_, i) => i), random)) {
+    // The center cell is its own rotational partner and is tested once.
+    const group = paired && i !== 40 ? [i, 80 - i] : [i];
+    const saved = group.map(cell => values[cell]);
+    group.forEach(cell => values[cell] = 0);
+    if (countSolutions(values, puzzle.regions) !== 1) group.forEach((cell, j) => values[cell] = saved[j]);
+    tested += group.length;
+    progress?.([...values], tested);
   }
   return { regions: [...puzzle.regions], values };
 }
@@ -107,7 +124,7 @@ export function solve(values: Board, regions: Board, random = Math.random, limit
   return search() ? board : null;
 }
 /** Swap boundary cells between regions, accepting only connected nine-cell regions. */
-export function partition(random = Math.random): Board {
+export function partition(random = Math.random, symmetric = false): Board {
   const regions = classicRegions();
   for (let step = 0; step < 1600; step++) {
     const i = Math.floor(random() * 81), adjacent = neighbors(i).filter(j => regions[i] !== regions[j]);
@@ -115,14 +132,25 @@ export function partition(random = Math.random): Board {
     const b = regions[adjacent[Math.floor(random() * adjacent.length)]], a = regions[i];
     const options = regions.flatMap((r, j) => r === b && neighbors(j).some(k => regions[k] === a) ? [j] : []);
     const j = options[Math.floor(random() * options.length)];
+    if (symmetric) {
+      // Apply both swaps atomically. The center and overlapping orbits are
+      // skipped so every accepted mutation preserves region sizes and R(i)=8-R(80-i).
+      const cells = [i, j, 80 - i, 80 - j];
+      if (new Set(cells).size !== 4) continue;
+      const saved = cells.map(cell => regions[cell]);
+      [regions[i], regions[j]] = [regions[j], regions[i]];
+      [regions[80 - i], regions[80 - j]] = [regions[80 - j], regions[80 - i]];
+      if (![...new Set(saved)].every(r => connected(regions, r))) cells.forEach((cell, n) => regions[cell] = saved[n]);
+      continue;
+    }
     [regions[i], regions[j]] = [regions[j], regions[i]];
     if (!connected(regions, a) || !connected(regions, b)) [regions[i], regions[j]] = [regions[j], regions[i]];
   }
   return regions;
 }
-export function generate(random = Math.random, progress?: (regions: Board, attempt: number) => void): Puzzle {
+export function generate(random = Math.random, progress?: (regions: Board, attempt: number) => void, symmetric = false): Puzzle {
   for (let attempt = 1; attempt <= 100; attempt++) {
-    const regions = partition(random);
+    const regions = partition(random, symmetric);
     if (regions.every((r, i) => r === classicRegions()[i])) continue;
     progress?.(regions, attempt);
     try { const values = solve(Array(81).fill(0), regions, random, 80_000); if (values) return { regions, values }; }
