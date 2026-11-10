@@ -64,3 +64,28 @@ existing zero-based region IDs. Copy image writes a 936×936 PNG of the current
 digits and region boundaries, respecting the region-colors toggle (on by default).
 If clipboard permission is unavailable, text is selectable manually and the PNG
 is downloaded instead. Clipboard copying requires a secure browser context.
+
+## Solution walkthrough and difficulty
+
+Every generated puzzle receives an immutable solution trace in the worker. A
+separate slider board shows the original clues at step zero and the exact board
+and candidates after each deduction, with pattern/changed-cell highlights and
+crossed-out eliminations. First/previous/next/last buttons and keyboard range
+controls navigate without changing the editable puzzle. Restored generated grids
+are reanalyzed automatically; edited/imported grids can use Analyze walkthrough.
+Only uniquely solvable grids receive a rated trace. Undo can restore cached traces.
+
+The region-aware logical engine supports Full House, Naked/Hidden Singles,
+Locked Candidates, Naked Pairs/Triples/Quadruples and row/column X-Wings. When
+these stall, it explicitly tests a cell's candidates by exhaustive search and
+records which have zero completions. This guarantees a complete walkthrough
+without pretending search is a human technique. Search runs in the cancellable
+worker with no cutoff that could confuse an incomplete search with a proof.
+
+Ratings are **Studio estimates for the recorded path**, not certified HoDoKu
+ratings or claims of minimum human difficulty. Logical steps use imported
+sudokUI weights and level/total-score thresholds. Search adds 1,000 points per
+check and overrides the rating to **Search-assisted**. Each step displays its
+technique, difficulty and points; the panel displays the aggregate and technique
+counts. Generation time excludes walkthrough analysis. Tests replay every step
+and ensure all eliminations preserve the known unique solution across five seeds.

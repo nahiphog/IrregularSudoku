@@ -1,5 +1,7 @@
 import './style.css';
 import { gridImage, serializeGrid } from './clipboard';
+import { mountWalkthrough } from './walkthrough-view';
+import type { Walkthrough } from './walkthrough';
 import { candidates, classicRegions, conflicts, validRegions, type Puzzle } from './sudoku';
 import { TECHS, ALL_TECHS } from '../vendor/sudokui/engine/ratings';
 import { TECH_DOCS } from '../vendor/sudokui/content/techniqueDocs';
@@ -39,6 +41,11 @@ function renderStudio() {
   try { const saved = JSON.parse(localStorage.getItem('irregular-studio') || 'null'); if (validPuzzle(saved)) puzzle = saved; } catch { /* Storage is optional. */ }
   main.innerHTML = `<section class="intro"><p class="eyebrow">THE IRREGULAR SUDOKU STUDIO</p><h1>Same digits.<br class="mobile-break"/> Different boundaries.</h1><p class="lede">A familiar puzzle with a wonderfully unfamiliar shape.<br/>Create a grid, explore its regions, and find your way through.</p></section><div class="studio"><section class="board-panel" aria-label="Sudoku board"><div class="board-heading"><span><span class="live-dot"></span> YOUR CANVAS</span><span id="filled">0 / 81 filled</span></div><div class="board" id="board" role="group" aria-label="Editable 9 by 9 Sudoku grid"></div><div class="board-bottom"><span id="selection">Select a cell to begin</span><button id="undo" class="text-button" disabled>↶ Undo</button></div><div class="keypad" aria-label="Digit input">${Array.from({ length: 9 }, (_, i) => `<button data-digit="${i + 1}" aria-label="Enter ${i + 1}">${i + 1}</button>`).join('')}<button data-digit="0" aria-label="Erase selected cell">⌫</button></div><p class="keyboard-hint">Use 1–9 to enter · Backspace to erase · Arrow keys to move</p></section><aside class="controls"><div class="control-card"><p class="eyebrow">A NEW KIND OF GRID</p><h2>Let the shapes surprise you.</h2><p>Generate nine connected regions, then fill the grid with a valid solution. Every click brings a new arrangement.</p><button id="generate" class="primary"><span>✧</span> Generate <span class="button-arrow">↗</span></button><div class="secondary-actions"><button id="blank">Clear digits</button><button id="solve">Solve grid</button></div><button id="cancel" hidden>Cancel generation</button><div id="status" class="status" role="status" aria-live="polite">Ready when you are. Generate your first irregular grid.</div></div><div class="rules"><span class="rule-icon">↳</span><div><h3>The rules are simple.</h3><p>Place the digits 1 through 9 in the grid so that each digit appears exactly once in each row, column and irregularly shaped region.</p></div></div><div class="options"><label><span>Region colors</span><input id="colors" type="checkbox" checked/></label><label><span>Show candidates</span><input id="candidates" type="checkbox"/></label></div><div class="file-actions"><button id="export" class="text-button">↓ Export grid</button><button id="import" class="text-button">↑ Import grid</button><input id="file" type="file" accept="application/json,.json" hidden/></div><a class="learn-link" href="/techniques"><span>STUCK? GET CURIOUS.<strong>Explore ${ALL_TECHS.length} solving techniques</strong></span><span>↗</span></a></aside></div><section class="principles"><div><span>01</span><h3>Nine connected regions</h3><p>Each shape contains exactly nine cells, joined edge to edge.</p></div><div><span>02</span><h3>One consistent rule</h3><p>Every row, column and region contains the digits 1 through 9.</p></div><div><span>03</span><h3>Room to experiment</h3><p>Clear the digits to make your own grid. Enter clues and let the solver help.</p></div></section>`;
   const board = document.querySelector<HTMLDivElement>('#board')!;
+  const traceCache = new Map<string, Walkthrough>();
+  const puzzleKey = () => serializeGrid(puzzle);
+  const walkthroughHost = document.createElement('div');
+  document.querySelector('.principles')!.before(walkthroughHost);
+  const walkView = mountWalkthrough(walkthroughHost, () => run('analyze'));
   document.querySelector('.control-card > p:not(.eyebrow)')!.textContent = 'Create a completed grid, then dig away clues one by one while preserving exactly one solution. Every remaining clue is essential.';
   board.insertAdjacentHTML('beforebegin', '<div id="generation-stats" class="generation-stats" aria-live="polite"></div>');
   document.querySelector('.file-actions')!.insertAdjacentHTML('beforebegin', '<div class="copy-actions"><button id="copy-string">Copy string</button><button id="copy-image">Copy image</button></div><p class="copy-help">String: 81 region IDs (1–9) + 81 digits (0 = blank). Image follows the region colors setting.</p><div id="copy-fallback" hidden><label for="grid-string">Select and copy this grid string:</label><textarea id="grid-string" readonly rows="4"></textarea></div>');
@@ -65,6 +72,7 @@ function renderStudio() {
     (document.querySelector('#undo') as HTMLButtonElement).disabled = busy || !history.length;
     document.querySelectorAll<HTMLButtonElement>('[data-digit]').forEach(b => b.disabled = busy || selected < 0);
     (document.querySelector('#cancel') as HTMLButtonElement).hidden = !busy;
+    walkView.update(busy ? null : traceCache.get(puzzleKey()) ?? null, busy, colors);
   }
   function checkpoint() { history.push(clone()); if (history.length > 100) history.shift(); }
   function select(i: number) { selected = i; draw(); board.querySelector<HTMLButtonElement>(`[data-cell="${i}"]`)?.focus(); }
@@ -83,18 +91,22 @@ function renderStudio() {
     else if (e.key.startsWith('Arrow')) { e.preventDefault(); const i = Math.max(0, selected); select(e.key === 'ArrowLeft' ? Math.max(i - 1, Math.floor(i / 9) * 9) : e.key === 'ArrowRight' ? Math.min(i + 1, Math.floor(i / 9) * 9 + 8) : e.key === 'ArrowUp' ? Math.max(0, i - 9) : Math.min(80, i + 9)); }
   });
   document.querySelectorAll<HTMLButtonElement>('[data-digit]').forEach(b => b.onclick = () => enter(Number(b.dataset.digit)));
-  function run(type: 'generate' | 'solve') {
+  function run(type: 'generate' | 'solve' | 'analyze') {
     const previous = clone(); busy = true; selected = -1; draw();
     const started = performance.now();
     const timer = window.setInterval(() => { document.querySelector('#generation-stats')!.textContent = `9 regions (cages) · ${puzzle.values.filter(Boolean).length} givens · Elapsed ${((performance.now() - started) / 1000).toFixed(1)} s`; }, 100);
-    status(type === 'generate' ? 'Creating nine connected regions…' : 'Finding a solution for your digits…');
+    status(type === 'generate' ? 'Creating nine connected regions…' : type === 'analyze' ? 'Building the solution walkthrough and rating…' : 'Finding a solution for your digits…');
     worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
     const finish = () => { clearInterval(timer); busy = false; worker?.terminate(); worker = null; draw(); };
     worker.onmessage = ({ data }) => {
+      if (data.type === 'analyzing') { status(`Building walkthrough… ${data.steps} explained steps so far.`); return; }
+      if (data.type === 'analyzed') { traceCache.set(puzzleKey(), data.walkthrough); finish(); status('Walkthrough ready. Use its slider below to explore the solution and difficulty.'); return; }
       if (data.type === 'progress') { puzzle = { regions: data.regions, values: Array(81).fill(0) }; draw(); status(`Filling a new region layout… attempt ${data.attempt}`); return; }
       if (data.type === 'digging') { puzzle = { regions: data.regions, values: data.values }; draw(); status(`Digging: tested ${data.tested} / 81 clues. ${data.values.filter(Boolean).length} givens remain. Checking for exactly one solution…`); return; }
       if (data.type === 'error' || (data.type === 'solved' && !data.values)) { puzzle = previous; finish(); status(data.message || 'No solution exists for these digits. Check your entries and try again.', true); return; }
-      history.push(previous); puzzle = { regions: data.regions || previous.regions, values: data.values, ...(type === 'generate' ? { generation: { elapsedMs: data.elapsedMs, clues: data.values.filter(Boolean).length } } : {}) }; save(); finish();
+      history.push(previous); puzzle = { regions: data.regions || previous.regions, values: data.values, ...(type === 'generate' ? { generation: { elapsedMs: data.elapsedMs, clues: data.values.filter(Boolean).length } } : {}) };
+      if (data.walkthrough) { traceCache.set(puzzleKey(), data.walkthrough); if (traceCache.size > 12) traceCache.delete(traceCache.keys().next().value!); }
+      save(); finish();
       status(type === 'generate' ? 'Dug-irregular grid ready. Exactly one solution; removing any remaining given would allow multiple solutions.' : 'Solved! Every row, column and region contains 1–9.');
     };
     worker.onerror = () => { puzzle = previous; finish(); status('The solver could not start. Please try again.', true); };
@@ -144,6 +156,7 @@ function renderStudio() {
   };
   draw();
   if (puzzle.values.some(Boolean)) status('Your previous grid is restored. Continue exploring or generate a new one.');
+  if (puzzle.generation) run('analyze');
 }
 function validPuzzle(p: unknown): p is Puzzle {
   if (!p || typeof p !== 'object') return false;
