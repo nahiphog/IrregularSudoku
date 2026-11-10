@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.upstream/
+*.tsbuildinfo
+site.tar.gz
+test-results/
