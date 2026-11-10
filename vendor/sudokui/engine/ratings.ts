@@ -115,6 +115,10 @@ export interface TechInfo {
   enabled: boolean;
 }
 
+// Irregular Sudoku override: keep these families visible but temporarily exclude
+// every member from the solver, rating and practice orders.
+export const DISABLED_FAMILIES: ReadonlySet<Category> = new Set(['Almost Locked Sets', 'Miscellaneous', 'Complex Fish']);
+
 const t = (
   index: number,
   name: string,
@@ -123,7 +127,7 @@ const t = (
   score: number,
   implemented = true,
   enabled = true
-): TechInfo => ({ index, name, level, category, score, implemented, enabled });
+): TechInfo => ({ index, name, level, category, score, implemented, enabled: enabled && !DISABLED_FAMILIES.has(category) });
 
 /** Keys follow HoDoKu's SolutionType names. */
 export const TECHS = {
