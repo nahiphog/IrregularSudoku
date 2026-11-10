@@ -8,7 +8,7 @@ export interface SolveStep {
   removed: { cell: number; digit: number }[];
 }
 export interface Walkthrough {
-  initial: Board; regions: Board; initialCandidates: number[][]; steps: SolveStep[];
+  initial: Board; givens: Board; regions: Board; initialCandidates: number[][]; steps: SolveStep[];
   rating: Level | 'Search-assisted'; score: number; searchSteps: number;
 }
 const coord = (i: number) => `r${Math.floor(i / 9) + 1}c${i % 9 + 1}`;
@@ -23,7 +23,7 @@ export function walkthrough(puzzle: Puzzle, progress?: (steps: number) => void):
   if (countSolutions(puzzle.values, puzzle.regions) !== 1) throw new Error('A rated walkthrough requires exactly one solution. This grid has zero or multiple solutions.');
   const values = [...puzzle.values], houses = units(puzzle.regions);
   let notes = values.map((_, i) => candidates(values, puzzle.regions, i));
-  const result: Walkthrough = { initial: [...values], regions: [...puzzle.regions], initialCandidates: notes.map(a => [...a]), steps: [], rating: 'Easy', score: 0, searchSteps: 0 };
+  const result: Walkthrough = { initial: [...values], givens: [...(puzzle.givens ?? values)], regions: [...puzzle.regions], initialCandidates: notes.map(a => [...a]), steps: [], rating: 'Easy', score: 0, searchSteps: 0 };
   function record(tech: Tech | 'SEARCH', explanation: string, pattern: number[], removed: SolveStep['removed'] = [], placed?: SolveStep['placed']) {
     if (placed) {
       values[placed.cell] = placed.digit;

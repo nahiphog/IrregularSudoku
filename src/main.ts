@@ -2,7 +2,7 @@ import './style.css';
 import { gridImage, serializeGrid } from './clipboard';
 import { mountWalkthrough } from './walkthrough-view';
 import type { Walkthrough } from './walkthrough';
-import { candidates, classicRegions, conflicts, validRegions, type Puzzle } from './sudoku';
+import { candidates, classicRegions, conflicts, isGiven, validRegions, type Puzzle } from './sudoku';
 import { TECHS, ALL_TECHS } from '../vendor/sudokui/engine/ratings';
 import { TECH_DOCS } from '../vendor/sudokui/content/techniqueDocs';
 
@@ -39,10 +39,11 @@ function renderStudio() {
   const history: Puzzle[] = [];
   const clone = (): Puzzle => ({ ...puzzle, regions: [...puzzle.regions], values: [...puzzle.values] });
   try { const saved = JSON.parse(localStorage.getItem('irregular-studio') || 'null'); if (validPuzzle(saved)) puzzle = saved; } catch { /* Storage is optional. */ }
+  puzzle.givens ??= [...puzzle.values];
   main.innerHTML = `<section class="intro"><p class="eyebrow">THE IRREGULAR SUDOKU STUDIO</p><h1>Same digits.<br class="mobile-break"/> Different boundaries.</h1><p class="lede">A familiar puzzle with a wonderfully unfamiliar shape.<br/>Create a grid, explore its regions, and find your way through.</p></section><div class="studio"><section class="board-panel" aria-label="Sudoku board"><div class="board-heading"><span><span class="live-dot"></span> YOUR CANVAS</span><span id="filled">0 / 81 filled</span></div><div class="board" id="board" role="group" aria-label="Editable 9 by 9 Sudoku grid"></div><div class="board-bottom"><span id="selection">Select a cell to begin</span><button id="undo" class="text-button" disabled>↶ Undo</button></div><div class="keypad" aria-label="Digit input">${Array.from({ length: 9 }, (_, i) => `<button data-digit="${i + 1}" aria-label="Enter ${i + 1}">${i + 1}</button>`).join('')}<button data-digit="0" aria-label="Erase selected cell">⌫</button></div><p class="keyboard-hint">Use 1–9 to enter · Backspace to erase · Arrow keys to move</p></section><aside class="controls"><div class="control-card"><p class="eyebrow">A NEW KIND OF GRID</p><h2>Let the shapes surprise you.</h2><p>Generate nine connected regions, then fill the grid with a valid solution. Every click brings a new arrangement.</p><button id="generate" class="primary"><span>✧</span> Generate <span class="button-arrow">↗</span></button><div class="secondary-actions"><button id="blank">Clear digits</button><button id="solve">Solve grid</button></div><button id="cancel" hidden>Cancel generation</button><div id="status" class="status" role="status" aria-live="polite">Ready when you are. Generate your first irregular grid.</div></div><div class="rules"><span class="rule-icon">↳</span><div><h3>The rules are simple.</h3><p>Place the digits 1 through 9 in the grid so that each digit appears exactly once in each row, column and irregularly shaped region.</p></div></div><div class="options"><label><span>Region colors</span><input id="colors" type="checkbox" checked/></label><label><span>Show candidates</span><input id="candidates" type="checkbox"/></label></div><div class="file-actions"><button id="export" class="text-button">↓ Export grid</button><button id="import" class="text-button">↑ Import grid</button><input id="file" type="file" accept="application/json,.json" hidden/></div><a class="learn-link" href="/techniques"><span>STUCK? GET CURIOUS.<strong>Explore ${ALL_TECHS.length} solving techniques</strong></span><span>↗</span></a></aside></div><section class="principles"><div><span>01</span><h3>Nine connected regions</h3><p>Each shape contains exactly nine cells, joined edge to edge.</p></div><div><span>02</span><h3>One consistent rule</h3><p>Every row, column and region contains the digits 1 through 9.</p></div><div><span>03</span><h3>Room to experiment</h3><p>Clear the digits to make your own grid. Enter clues and let the solver help.</p></div></section>`;
   const board = document.querySelector<HTMLDivElement>('#board')!;
   const traceCache = new Map<string, Walkthrough>();
-  const puzzleKey = () => serializeGrid(puzzle);
+  const puzzleKey = () => serializeGrid(puzzle) + (puzzle.givens ?? puzzle.values).join('');
   const walkthroughHost = document.createElement('div');
   document.querySelector('.principles')!.before(walkthroughHost);
   const walkView = mountWalkthrough(walkthroughHost, () => run('analyze'));
@@ -57,7 +58,7 @@ function renderStudio() {
     board.innerHTML = puzzle.values.map((v, i) => {
       const region = puzzle.regions[i], row = Math.floor(i / 9), col = i % 9;
       const peer = selected >= 0 && (puzzle.regions[selected] === region || Math.floor(selected / 9) === row || selected % 9 === col);
-      const classes = ['cell', `region-${region}`, selected === i ? 'selected' : '', peer ? 'peer' : '', bad.has(i) ? 'conflict' : ''].join(' ');
+      const classes = ['cell', `region-${region}`, isGiven(puzzle, i) ? 'given' : 'entered', selected === i ? 'selected' : '', peer ? 'peer' : '', bad.has(i) ? 'conflict' : ''].join(' ');
       const borders = `border-top-width:${row === 0 || puzzle.regions[i - 9] !== region ? 2 : 0}px;border-left-width:${col === 0 || puzzle.regions[i - 1] !== region ? 2 : 0}px;border-right-width:${col === 8 ? 2 : 1}px;border-bottom-width:${row === 8 ? 2 : 1}px;`;
       const notes = !v && showCandidates ? candidates(puzzle.values, puzzle.regions, i) : [];
       return `<button class="${classes}" style="${borders}" data-cell="${i}" ${busy ? 'disabled' : ''} tabindex="${selected === i || (selected < 0 && i === 0) ? 0 : -1}" aria-label="Row ${row + 1}, column ${col + 1}, region ${region + 1}, ${v || 'empty'}${bad.has(i) ? ', conflict' : ''}" aria-pressed="${selected === i}">${v || (notes.length ? `<span class="notes">${Array.from({ length: 9 }, (_, n) => `<span>${notes.includes(n + 1) ? n + 1 : ''}</span>`).join('')}</span>` : '')}</button>`;
@@ -104,7 +105,7 @@ function renderStudio() {
       if (data.type === 'progress') { puzzle = { regions: data.regions, values: Array(81).fill(0) }; draw(); status(`Filling a new region layout… attempt ${data.attempt}`); return; }
       if (data.type === 'digging') { puzzle = { regions: data.regions, values: data.values }; draw(); status(`Digging: tested ${data.tested} / 81 clues. ${data.values.filter(Boolean).length} givens remain. Checking for exactly one solution…`); return; }
       if (data.type === 'error' || (data.type === 'solved' && !data.values)) { puzzle = previous; finish(); status(data.message || 'No solution exists for these digits. Check your entries and try again.', true); return; }
-      history.push(previous); puzzle = { regions: data.regions || previous.regions, values: data.values, ...(type === 'generate' ? { generation: { elapsedMs: data.elapsedMs, clues: data.values.filter(Boolean).length } } : {}) };
+      history.push(previous); puzzle = { regions: data.regions || previous.regions, values: data.values, givens: type === 'generate' ? [...data.values] : [...(previous.givens ?? previous.values)], ...(type === 'generate' ? { generation: { elapsedMs: data.elapsedMs, clues: data.values.filter(Boolean).length } } : {}) };
       if (data.walkthrough) { traceCache.set(puzzleKey(), data.walkthrough); if (traceCache.size > 12) traceCache.delete(traceCache.keys().next().value!); }
       save(); finish();
       status(type === 'generate' ? 'Dug-irregular grid ready. Exactly one solution; removing any remaining given would allow multiple solutions.' : 'Solved! Every row, column and region contains 1–9.');
@@ -115,7 +116,7 @@ function renderStudio() {
   }
   document.querySelector<HTMLButtonElement>('#generate')!.onclick = () => run('generate');
   document.querySelector<HTMLButtonElement>('#solve')!.onclick = () => run('solve');
-  document.querySelector<HTMLButtonElement>('#blank')!.onclick = () => { checkpoint(); puzzle.values.fill(0); delete puzzle.generation; save(); draw(); status('Digits cleared. The regions are ready for your clues. This blank grid can have multiple solutions.'); };
+  document.querySelector<HTMLButtonElement>('#blank')!.onclick = () => { checkpoint(); puzzle.values.fill(0); puzzle.givens = Array(81).fill(0); delete puzzle.generation; save(); draw(); status('Digits cleared. The regions are ready for your clues. This blank grid can have multiple solutions.'); };
   document.querySelector<HTMLButtonElement>('#undo')!.onclick = () => { const old = history.pop(); if (old) { puzzle = old; save(); draw(); status('Previous grid restored.'); } };
   document.querySelector<HTMLInputElement>('#colors')!.onchange = e => { colors = (e.target as HTMLInputElement).checked; draw(); };
   document.querySelector<HTMLInputElement>('#candidates')!.onchange = e => { showCandidates = (e.target as HTMLInputElement).checked; draw(); };
@@ -150,7 +151,7 @@ function renderStudio() {
   const file = document.querySelector<HTMLInputElement>('#file')!;
   document.querySelector<HTMLButtonElement>('#import')!.onclick = () => file.click();
   file.onchange = async () => {
-    try { const chosen = file.files?.[0]; if (!chosen) return; if (chosen.size > 50_000) throw new Error('File too large. Choose an exported Sudoku JSON file.'); const imported = JSON.parse(await chosen.text()); if (!validPuzzle(imported)) throw new Error('Invalid grid. Expected 81 digits (0–9) and nine connected regions (IDs 0–8), each containing nine cells.'); checkpoint(); puzzle = { values: [...imported.values], regions: [...imported.regions] }; selected = -1; save(); draw(); status('Grid imported. You can edit the digits or solve it.'); }
+    try { const chosen = file.files?.[0]; if (!chosen) return; if (chosen.size > 50_000) throw new Error('File too large. Choose an exported Sudoku JSON file.'); const imported = JSON.parse(await chosen.text()); if (!validPuzzle(imported)) throw new Error('Invalid grid. Expected 81 digits (0–9) and nine connected regions (IDs 0–8), each containing nine cells.'); checkpoint(); puzzle = { values: [...imported.values], regions: [...imported.regions], givens: [...(imported.givens ?? imported.values)] }; selected = -1; save(); draw(); status('Grid imported. You can edit the digits or solve it.'); }
     catch (e) { status(e instanceof Error ? e.message : 'Could not import this file.', true); }
     finally { file.value = ''; }
   };
@@ -161,6 +162,7 @@ function renderStudio() {
 function validPuzzle(p: unknown): p is Puzzle {
   if (!p || typeof p !== 'object') return false;
   const x = p as Puzzle;
+  if (x.givens !== undefined && (!Array.isArray(x.givens) || x.givens.length !== 81 || x.givens.some(v => !Number.isInteger(v) || v < 0 || v > 9))) return false;
   if (x.generation && (!Number.isFinite(x.generation.elapsedMs) || x.generation.elapsedMs < 0 || !Number.isInteger(x.generation.clues) || x.generation.clues < 0 || x.generation.clues > 81)) return false;
   return Array.isArray(x.regions) && validRegions(x.regions) && Array.isArray(x.values) && x.values.length === 81 && x.values.every(v => Number.isInteger(v) && v >= 0 && v <= 9);
 }

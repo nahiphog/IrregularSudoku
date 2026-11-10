@@ -1,5 +1,7 @@
 export type Board = number[];
-export interface Puzzle { regions: Board; values: Board; generation?: { elapsedMs: number; clues: number } }
+export interface Puzzle { regions: Board; values: Board; givens?: Board; generation?: { elapsedMs: number; clues: number } }
+/** Legacy/imported grids without provenance treat their current digits as clues. */
+export const isGiven = (puzzle: Puzzle, cell: number): boolean => !!puzzle.values[cell] && (puzzle.givens ?? puzzle.values)[cell] === puzzle.values[cell];
 export const classicRegions = () => Array.from({ length: 81 }, (_, i) => Math.floor(i / 27) * 3 + Math.floor((i % 9) / 3));
 export const neighbors = (i: number) => [i - 9, i + 9, ...(i % 9 ? [i - 1] : []), ...(i % 9 < 8 ? [i + 1] : [])].filter(j => j >= 0 && j < 81);
 function shuffle<T>(a: T[], random = Math.random): T[] {

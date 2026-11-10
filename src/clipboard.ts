@@ -1,4 +1,4 @@
-import type { Puzzle } from './sudoku';
+import { isGiven, type Puzzle } from './sudoku';
 
 /** 81 one-based region IDs followed by 81 digits; empty cells are zero. */
 export function serializeGrid(puzzle: Puzzle): string {
@@ -17,7 +17,7 @@ export function gridImage(puzzle: Puzzle, colors: boolean): Promise<Blob> {
   for (let i = 0; i < 81; i++) {
     const x = pad + i % 9 * size, y = pad + Math.floor(i / 9) * size;
     ctx.fillStyle = colors ? palette[puzzle.regions[i]] : '#fffef9'; ctx.fillRect(x, y, size, size);
-    if (puzzle.values[i]) { ctx.fillStyle = '#314a41'; ctx.font = '500 48px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(puzzle.values[i]), x + size / 2, y + size / 2 + 2); }
+    if (puzzle.values[i]) { ctx.fillStyle = isGiven(puzzle, i) ? '#000000' : '#1756c0'; ctx.font = '500 48px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(puzzle.values[i]), x + size / 2, y + size / 2 + 2); }
   }
   const line = (x: number, y: number, x2: number, y2: number, boundary: boolean) => {
     ctx.beginPath(); ctx.lineWidth = boundary ? 5 : 1; ctx.strokeStyle = boundary ? '#42584f' : '#b6c0b3'; ctx.moveTo(x, y); ctx.lineTo(x2, y2); ctx.stroke();
