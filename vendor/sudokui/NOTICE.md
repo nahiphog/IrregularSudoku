@@ -14,3 +14,6 @@ implementation status. Classic technique implementations are retained as source,
 not used to make deductions on irregular regions. The irregular solver is a new
 region-aware backtracking solver; the reference guide does not claim all classic
 patterns transfer to irregular Sudoku. Upstream text is unmodified.
+
+Additional named techniques are temporarily disabled by DISABLED_TECHNIQUES in
+engine/ratings.ts. Difficulty levels remain visible in the catalogue.

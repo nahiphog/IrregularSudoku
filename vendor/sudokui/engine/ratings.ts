@@ -119,6 +119,49 @@ export interface TechInfo {
 // every member from the solver, rating and practice orders.
 export const DISABLED_FAMILIES: ReadonlySet<Category> = new Set(['Almost Locked Sets', 'Miscellaneous', 'Complex Fish']);
 
+export const DISABLED_TECHNIQUES: ReadonlySet<string> = new Set([
+  "Chute Remote Pair",
+  "BUG+1",
+  "Turbot Fish",
+  "Unique Rectangle Type 1",
+  "Unique Rectangle Type 2",
+  "Unique Rectangle Type 3",
+  "Unique Rectangle Type 4",
+  "Unique Rectangle Type 5",
+  "Unique Rectangle Type 6",
+  "Hidden Rectangle",
+  "Avoidable Rectangle Type 1",
+  "Avoidable Rectangle Type 2",
+  "Extended Rectangle",
+  "Finned X-Wing",
+  "Sashimi X-Wing",
+  "Finned Swordfish",
+  "Sashimi Swordfish",
+  "Finned Jellyfish",
+  "Sashimi Jellyfish",
+  "Simple Colors",
+  "Multi Colors",
+  "3D Medusa",
+  "X-Chain",
+  "X-Cycles (loops)",
+  "Grouped X-Cycles",
+  "XY-Chain",
+  "Twinned XY-Chains",
+  "Nice Loop",
+  "Grouped Nice Loop",
+  "Alternating Inference Chain",
+  "AIC with Groups",
+  "AIC with ALSs",
+  "Exocet",
+  "Pattern Overlay",
+  "Forcing Chain",
+  "Digit Forcing Chain",
+  "Nishio Forcing Chain",
+  "Cell Forcing Chain",
+  "Unit Forcing Chain",
+  "Forcing Net"
+]);
+
 const t = (
   index: number,
   name: string,
@@ -127,7 +170,7 @@ const t = (
   score: number,
   implemented = true,
   enabled = true
-): TechInfo => ({ index, name, level, category, score, implemented, enabled: enabled && !DISABLED_FAMILIES.has(category) });
+): TechInfo => ({ index, name, level, category, score, implemented, enabled: enabled && !DISABLED_FAMILIES.has(category) && !DISABLED_TECHNIQUES.has(name) });
 
 /** Keys follow HoDoKu's SolutionType names. */
 export const TECHS = {
