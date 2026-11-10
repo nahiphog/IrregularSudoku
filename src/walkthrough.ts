@@ -29,7 +29,7 @@ export function walkthrough(puzzle: Puzzle, progress?: (steps: number) => void):
       values[placed.cell] = placed.digit;
       notes = notes.map((list, i) => values[i] ? [] : list.filter(d => candidates(values, puzzle.regions, i).includes(d)));
     } else for (const { cell, digit } of removed) notes[cell] = notes[cell].filter(d => d !== digit);
-    const info = tech === 'SEARCH' ? { name: 'Exhaustive candidate check', level: 'Search-assisted' as const, score: 1000 } : TECHS[tech];
+    const info = tech === 'SEARCH' ? { name: 'Brute force', level: 'Search-assisted' as const, score: 10000 } : TECHS[tech];
     result.steps.push({ technique: info.name, explanation, level: info.level, score: info.score, values: [...values], candidates: notes.map(a => [...a]), pattern: [...pattern], affected: placed ? [placed.cell] : [...new Set(removed.map(r => r.cell))], placed, removed });
     result.score += info.score;
     if (tech === 'SEARCH') result.searchSteps++;

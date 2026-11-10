@@ -120,8 +120,8 @@ worker with no cutoff that could confuse an incomplete search with a proof.
 
 Ratings are **Studio estimates for the recorded path**, not certified HoDoKu
 ratings or claims of minimum human difficulty. Logical steps use imported
-sudokUI weights and level/total-score thresholds. Search adds 1,000 points per
-check and overrides the rating to **Search-assisted**. Each step displays its
+sudokUI weights and level/total-score thresholds. Brute force adds 10,000 points per
+use and overrides the rating to **Search-assisted**. Each step displays its
 technique, difficulty and points; the panel displays the aggregate and technique
 counts. Generation time excludes walkthrough analysis. Tests replay every step
 and ensure all eliminations preserve the known unique solution across five seeds.

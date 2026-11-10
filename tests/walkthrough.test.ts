@@ -14,6 +14,7 @@ test('walkthroughs replay from original clues to the unique solution without inv
     let values = [...trace.initial], notes = trace.initialCandidates.map(n => [...n]);
     for (const step of trace.steps) {
       techniques.add(step.technique);
+      if (step.level === 'Search-assisted') { assert.equal(step.technique, 'Brute force'); assert.equal(step.score, 10000); }
       assert.ok(step.explanation.length > 20);
       if (step.placed) {
         const { cell, digit } = step.placed;
@@ -39,7 +40,7 @@ test('walkthroughs replay from original clues to the unique solution without inv
   }
   assert.ok(techniques.has('Full House'));
   assert.ok(techniques.has('Hidden Single'));
-  assert.ok(techniques.has('Exhaustive candidate check'));
+  assert.ok(techniques.has('Brute force'));
 });
 test('a one-cell walkthrough has an easy Full House deduction; completed grid has zero steps', () => {
   const full = generate(random(42)), partial = structuredClone(full); partial.values[0] = 0;
