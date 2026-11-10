@@ -1,8 +1,17 @@
-import { isGiven, type Puzzle } from './sudoku';
+import { isGiven, validRegions, conflicts, type Puzzle } from './sudoku';
 
 /** 81 one-based region IDs followed by 81 digits; empty cells are zero. */
 export function serializeGrid(puzzle: Puzzle): string {
   return puzzle.regions.map(r => r + 1).join('') + puzzle.values.join('');
+}
+export function parseGrid(text: string): Puzzle {
+  const compact = text.replace(/\s/g, '');
+  if (!/^[1-9]{81}[0-9]{81}$/.test(compact)) throw new Error('Enter 162 digits: 81 region IDs (1–9), then 81 cell values (0–9; 0 means blank).');
+  const regions = [...compact.slice(0, 81)].map(d => Number(d) - 1);
+  const values = [...compact.slice(81)].map(Number);
+  if (!validRegions(regions)) throw new Error('Each of the nine regions must contain nine cells connected edge to edge.');
+  if (conflicts(values, regions).size) throw new Error('The digits conflict in a row, column or region.');
+  return { regions, values, givens: [...values] };
 }
 
 const palette = ['#eef0df', '#f5e9dc', '#e5ede5', '#e4ecee', '#f4efdc', '#eee5e5', '#e9e6ef', '#e3ede0', '#f0e7dc'];

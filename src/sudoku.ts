@@ -77,13 +77,15 @@ export function countSolutions(values: Board, regions: Board): number {
  * (not a global minimum clue count).
  * No search cutoff: an inconclusive search must never be treated as uniqueness.
  */
-export function dig(puzzle: Puzzle, random = Math.random, progress?: (values: Board, tested: number) => void, paired = false): Puzzle {
+export function dig(puzzle: Puzzle, random = Math.random, progress?: (values: Board, tested: number) => void, paired = false, required: boolean[] = Array(81).fill(false)): Puzzle {
+  if (required.length !== 81 || required.some(v => typeof v !== 'boolean')) throw new Error('Expected 81 required-cell flags.');
   if (puzzle.values.some(v => !v) || countSolutions(puzzle.values, puzzle.regions) !== 1) throw new Error('Digging requires a valid completed grid.');
   const values = [...puzzle.values];
   let tested = 0;
   for (const i of shuffle(Array.from({ length: paired ? 41 : 81 }, (_, i) => i), random)) {
     // The center cell is its own rotational partner and is tested once.
     const group = paired && i !== 40 ? [i, 80 - i] : [i];
+    if (group.some(cell => required[cell])) { tested += group.length; progress?.([...values], tested); continue; }
     const saved = group.map(cell => values[cell]);
     group.forEach(cell => values[cell] = 0);
     if (countSolutions(values, puzzle.regions) !== 1) group.forEach((cell, j) => values[cell] = saved[j]);

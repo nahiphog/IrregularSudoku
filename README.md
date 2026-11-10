@@ -33,14 +33,28 @@ Digging has no search cutoff and can be cancelled.
 The interface shows remaining givens, nine regions (cages), and total generation
 time including construction, solving and digging.
 
-Clear digits to enter your own clues, then Solve grid to find one
+The studio grid is read-only. Import a 162-character grid string or use Custom
+build to design regions and required-given positions, then Solve grid to find a
 completion. Conflicting or unsatisfiable clues produce an error; search budget
 exhaustion is reported separately. Undo restores previous grids. Grid state is
 saved locally when browser storage is available.
 
-JSON import/export uses `values` (81 integers, 0 for blank, 1–9 for digits) and
-`regions` (81 region IDs 0–8), both in row-major order. Imports validate region
-size and edge connectivity. This also allows solving externally authored layouts.
+Copy to clipboard and Import grid both use exactly 162 digits: 81 row-major
+region IDs (1–9), then 81 values (0 for blank). Import validates region sizes,
+edge connectivity and duplicate digits. JSON files are no longer used for grid
+exchange. Browser storage remains an internal implementation detail.
+
+## Custom build
+
+`/custom-build/` lets users click or drag to paint one of nine regions, erase
+cells, undo changes, and mark optional required givens with stars. Region counts
+and connectivity are checked before generation. Drafts are saved locally. A
+required position must retain a digit, but does not prescribe which digit;
+unmarked cells may also be retained for uniqueness. Paired digging protects the
+opposite partner of every required position. The worker solves the supplied
+layout, preserves required cells while digging, and prepares the walkthrough.
+Invalid or unsatisfiable layouts report errors without replacing the design.
+Completed custom puzzles open in the studio.
 
 ## Technique import
 
@@ -79,8 +93,7 @@ the necessity of every retained pair or individual clue.
 ## Clipboard
 
 Copy string writes exactly 162 characters: 81 row-major region IDs (1–9), followed
-by 81 row-major cell values (0 means blank), with no separator. JSON retains the
-existing zero-based region IDs. Copy image writes a 936×936 PNG of the current
+by 81 row-major cell values (0 means blank), with no separator. Copy image writes a 936×936 PNG of the current
 digits and region boundaries, respecting the region-colors toggle (on by default).
 If clipboard permission is unavailable, text is selectable manually and the PNG
 is downloaded instead. Clipboard copying requires a secure browser context.
@@ -91,8 +104,8 @@ Every generated puzzle receives an immutable solution trace in the worker. A
 separate slider board shows the original clues at step zero and the exact board
 and candidates after each deduction, with pattern/changed-cell highlights and
 crossed-out eliminations. First/previous/next/last buttons and keyboard range
-controls navigate without changing the editable puzzle. Restored generated grids
-are reanalyzed automatically; edited/imported grids can use Analyze walkthrough.
+controls navigate without changing the read-only puzzle. Restored generated grids
+are reanalyzed automatically; imported grids can use Analyze walkthrough.
 Only uniquely solvable grids receive a rated trace. Undo can restore cached traces.
 
 The region-aware logical engine supports Full House, Naked/Hidden Singles,
