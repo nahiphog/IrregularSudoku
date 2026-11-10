@@ -62,7 +62,7 @@ All 80 technique descriptions, ratings, glossary data and the classic engine
 are imported from AImenes/sudokUI at commit
 `cf7ce55e09ee7ea879327f4f995f9e603d4fb17a`. See
 `vendor/sudokui/NOTICE.md` and `LICENSE` (GPL-3.0). The techniques page preserves
-all 80 entries in a compact, filterable list with difficulty and score; descriptions
+all 80 entries in a compact list of names and availability statuses; descriptions
 remain in the downloaded source. Almost Locked Sets, Miscellaneous and Complex
 Fish are temporarily disabled and labeled in the list, and excluded from the
 imported engine's solver, rating and practice orders. Classic finders are retained
