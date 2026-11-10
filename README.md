@@ -18,8 +18,15 @@ that are unsatisfiable or exceed a search budget are discarded. Generation runs
 in a cancellable Web Worker and has a 100-layout limit. The distribution is not
 uniform over all possible region partitions.
 
-The output is a complete valid solution, not a clue-reduced, uniquely solvable
-puzzle. Clear digits to enter your own clues, then Solve grid to find one
+The completed grid is then dug in a shuffled cell order. Each removal is kept
+only when exhaustive solution counting (stopping at two solutions) proves exactly
+one solution. All 81 cells are tested. A failed removal cannot become possible
+after further removals, so the result is single-clue minimal, not necessarily a
+globally smallest puzzle. Digging has no search cutoff and can be cancelled.
+The interface shows remaining givens, nine regions (cages), and total generation
+time including construction, solving and digging.
+
+Clear digits to enter your own clues, then Solve grid to find one
 completion. Conflicting or unsatisfiable clues produce an error; search budget
 exhaustion is reported separately. Undo restores previous grids. Grid state is
 saved locally when browser storage is available.
@@ -46,4 +53,14 @@ Static hosting must serve `index.html` for `/techniques` (Vite does so locally).
 Tests cover 40 partition seeds, 20 complete generated grids, all 27 units per
 grid, solving partial grids while preserving clues, invalid/disconnected region
 maps, duplicate digits, bounded-search errors, and completeness of the 80-entry
-technique import.
+technique import. Digging tests independently recheck uniqueness and remove every
+remaining clue to verify minimality on three seeded irregular grids.
+
+## Clipboard
+
+Copy string writes exactly 162 characters: 81 row-major region IDs (1–9), followed
+by 81 row-major cell values (0 means blank), with no separator. JSON retains the
+existing zero-based region IDs. Copy image writes a 936×936 PNG of the current
+digits and region boundaries, respecting the region-colors toggle (on by default).
+If clipboard permission is unavailable, text is selectable manually and the PNG
+is downloaded instead. Clipboard copying requires a secure browser context.

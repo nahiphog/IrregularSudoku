@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { generate, partition, validRegions, classicRegions, solve, units, conflicts, candidates, SearchLimitError } from '../src/sudoku.ts';
+import { countSolutions, dig, generate, partition, validRegions, classicRegions, solve, units, conflicts, candidates, SearchLimitError } from '../src/sudoku.ts';
+import { serializeGrid } from '../src/clipboard.ts';
 import { ALL_TECHS } from '../vendor/sudokui/engine/ratings.ts';
 import { TECH_DOCS } from '../vendor/sudokui/content/techniqueDocs.ts';
 function random(seed: number) { return () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; }; }
@@ -39,4 +40,40 @@ test('bounded search reports exhaustion instead of claiming unsatisfiable', () =
 test('all 80 imported techniques have complete documentation', () => {
   assert.equal(ALL_TECHS.length, 80);
   for (const key of ALL_TECHS) { assert.ok(TECH_DOCS[key].what); assert.ok(TECH_DOCS[key].why); assert.ok(TECH_DOCS[key].spot); }
+});
+test('solution counting distinguishes zero, one and multiple solutions', () => {
+  const regions = classicRegions(), values = Array(81).fill(0);
+  assert.equal(countSolutions(values, regions), 2);
+  values[0] = values[1] = 1;
+  assert.equal(countSolutions(values, regions), 0);
+  const complete = generate(random(42));
+  assert.equal(countSolutions(complete.values, complete.regions), 1);
+  const partial = [...complete.values]; partial[0] = 0;
+  assert.equal(countSolutions(partial, complete.regions), 1);
+  assert.equal(partial[0], 0);
+});
+test('digging produces unique, single-clue-minimal grids and preserves the input', () => {
+  for (let seed = 1; seed <= 3; seed++) {
+    const full = generate(random(seed)), original = structuredClone(full);
+    let progress = 0;
+    const dug = dig(full, random(seed + 100), (values, tested) => { assert.equal(tested, ++progress); assert.equal(values.length, 81); });
+    assert.equal(progress, 81);
+    assert.deepEqual(full, original);
+    assert.deepEqual(dug.regions, full.regions);
+    assert.ok(dug.values.includes(0));
+    assert.equal(countSolutions(dug.values, dug.regions), 1);
+    assert.deepEqual(solve(dug.values, dug.regions), full.values);
+    for (let i = 0; i < 81; i++) if (dug.values[i]) {
+      assert.equal(dug.values[i], full.values[i]);
+      const less = [...dug.values]; less[i] = 0;
+      assert.equal(countSolutions(less, dug.regions), 2, `seed ${seed}: clue ${i} must be essential`);
+    }
+  }
+});
+test('clipboard string matches the specified region format and row-major digit order', () => {
+  const values = Array.from({ length: 81 }, (_, i) => i % 10);
+  const text = serializeGrid({ regions: classicRegions(), values });
+  assert.equal(text.length, 162);
+  assert.equal(text.slice(0, 81), '111222333111222333111222333444555666444555666444555666777888999777888999777888999');
+  assert.equal(text.slice(81), values.join(''));
 });
