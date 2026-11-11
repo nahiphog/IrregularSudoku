@@ -1,4 +1,4 @@
-import { gridImage, parseGrid, serializeGrid } from './clipboard';
+import { gridImage, serializeGrid } from './clipboard';
 import { mountWalkthrough } from './walkthrough-view';
 import type { Walkthrough } from './walkthrough';
 import { classicRegions, validRegions, type Puzzle } from './sudoku';
@@ -11,19 +11,18 @@ export function renderStudio(main: HTMLElement) {
   const clone = (): Puzzle => ({ ...puzzle, regions: [...puzzle.regions], values: [...puzzle.values] });
   try { const saved = JSON.parse(localStorage.getItem('irregular-studio') || 'null'); if (validPuzzle(saved)) puzzle = saved; } catch { /* optional storage */ }
   puzzle.givens ??= [...puzzle.values];
-  main.innerHTML = `<div class="studio"><section class="board-panel" aria-label="Sudoku board"><div class="board" id="board" role="group" aria-label="Read-only 9 by 9 Sudoku grid"></div><div class="board-bottom"><span>Read-only grid</span><button id="undo" class="text-button">↶ Undo</button></div></section><aside class="controls"><div class="control-card"><div class="generation-options"><label><input id="symmetric-regions" type="checkbox" checked/> 180° symmetric regions</label><label><input id="paired-digging" type="checkbox" checked/> Dig opposite cells in pairs</label></div><button id="generate" class="primary">Generate</button><div id="generation-stats" class="generation-stats" role="status"></div><button id="solve" class="wide-button">Solve grid</button><button id="cancel" hidden>Cancel</button><div id="status" class="status" role="status" aria-live="polite"></div></div><div class="rules"><div><h3>The rules</h3><p>Place the digits 1 through 9 in the grid so that each digit appears exactly once in each row, column and irregularly shaped region.</p></div></div><div class="options"><label><span>Region colors</span><input id="colors" type="checkbox" checked/></label><label><span>Show candidates</span><input id="candidates" type="checkbox"/></label></div><div class="copy-actions"><button id="copy-string">Copy to clipboard</button><button id="copy-image">Copy image</button></div><button id="import" class="wide-button">Import grid</button><p class="copy-help">162 characters: 81 region IDs (1–9), followed by 81 cell digits (0 = blank).</p><div id="copy-fallback" hidden><label for="grid-string">Copy this string:</label><textarea id="grid-string" readonly rows="4"></textarea></div><div id="import-panel" hidden><label for="import-string">Paste your 162-character grid string</label><textarea id="import-string" rows="4" spellcheck="false"></textarea><div class="copy-actions"><button id="paste-string">Paste clipboard</button><button id="apply-import">Load grid</button></div></div><a class="learn-link" href="/custom-build">Custom build <span>↗</span></a><a class="learn-link" href="/techniques">Solving techniques <span>↗</span></a></aside></div><div id="walkthrough-host"></div>`;
+  main.innerHTML = `<div class="studio"><section class="board-panel" aria-label="Sudoku board"><div class="board" id="board" role="group" aria-label="Read-only 9 by 9 Sudoku grid"></div><div class="board-bottom"><span>Read-only grid</span><button id="undo" class="text-button">↶ Undo</button></div></section><aside class="controls"><div class="control-card"><div class="generation-options"><label><input id="symmetric-regions" type="checkbox" checked/> 180° symmetric regions</label><label><input id="paired-digging" type="checkbox" checked/> Dig opposite cells in pairs</label></div><button id="generate" class="primary">Generate</button><div id="generation-stats" class="generation-stats" role="status"></div><button id="solve" class="wide-button">Solve grid</button><button id="cancel" hidden>Cancel</button><div id="status" class="status" role="status" aria-live="polite"></div></div><div class="rules"><div><h3>The rules</h3><p>Place the digits 1 through 9 in the grid so that each digit appears exactly once in each row, column and irregularly shaped region.</p></div></div><div class="options"><label><span>Region colors</span><input id="colors" type="checkbox" checked/></label><label><span>Show candidates</span><input id="candidates" type="checkbox"/></label></div><div class="copy-actions"><button id="copy-string">Copy to clipboard</button><button id="copy-image">Copy image</button></div><p class="copy-help">162 characters: 81 region IDs (1–9), followed by 81 cell digits (0 = blank).</p><div id="copy-fallback" hidden><label for="grid-string">Copy this string:</label><textarea id="grid-string" readonly rows="4"></textarea></div><a class="learn-link" href="/custom-build">Custom build <span>↗</span></a><a class="learn-link" href="/techniques">Solving techniques <span>↗</span></a></aside></div><div id="walkthrough-host"></div>`;
   const el = <T extends HTMLElement>(id: string) => main.querySelector<T>(`#${id}`)!;
   const board = el('board');
   const key = () => serializeGrid(puzzle) + (puzzle.givens ?? puzzle.values).join('');
   const walkView = mountWalkthrough(el('walkthrough-host'), () => run('analyze'));
   const status = (text: string, error = false) => { el('status').textContent = text; el('status').classList.toggle('error', error); };
   const save = () => { try { localStorage.setItem('irregular-studio', JSON.stringify(puzzle)); } catch { /* optional */ } };
-  const checkpoint = () => { history.push(clone()); if (history.length > 100) history.shift(); };
   function draw() {
     board.classList.toggle('no-colors', !colors); board.innerHTML = gridMarkup(puzzle, showCandidates);
     const trace = traceCache.get(key());
-    el('generation-stats').textContent = busy ? '' : puzzle.values.some(Boolean) ? `Difficulty: ${trace?.rating ?? 'Not analyzed'} · ${(puzzle.givens ?? puzzle.values).filter(Boolean).length} givens${puzzle.generation ? ` · Generated in ${(puzzle.generation.elapsedMs / 1000).toFixed(2)} s` : ''}` : '';
-    for (const id of ['generate','solve','copy-string','copy-image','import','apply-import','paste-string','symmetric-regions','paired-digging']) el<HTMLButtonElement>(id).disabled = busy;
+    el('generation-stats').textContent = busy ? '' : puzzle.values.some(Boolean) ? `Difficulty: ${trace?.score ?? 'Not analyzed'} · ${(puzzle.givens ?? puzzle.values).filter(Boolean).length} givens${puzzle.generation ? ` · Generated in ${(puzzle.generation.elapsedMs / 1000).toFixed(2)} s` : ''}` : '';
+    for (const id of ['generate','solve','copy-string','copy-image','symmetric-regions','paired-digging']) el<HTMLButtonElement>(id).disabled = busy;
     el<HTMLButtonElement>('undo').disabled = busy || !history.length;
     el('copy-fallback').hidden = true; el('cancel').hidden = !busy;
     walkView.update(busy ? null : traceCache.get(key()) ?? null, busy, colors);
@@ -69,12 +68,6 @@ export function renderStudio(main: HTMLElement) {
     const png = gridImage(clone(),colors);
     try { await navigator.clipboard.write([new ClipboardItem({'image/png':png})]); status('Image copied.'); }
     catch { try { const blob = await png, a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'irregular-sudoku.png'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href),1000); status('Image clipboard unavailable. Downloaded PNG instead.'); } catch { status('Could not create image.',true); } }
-  };
-  el<HTMLButtonElement>('import').onclick = () => { el('import-panel').hidden = !el('import-panel').hidden; if (!el('import-panel').hidden) el<HTMLTextAreaElement>('import-string').focus(); };
-  el<HTMLButtonElement>('paste-string').onclick = async () => { try { el<HTMLTextAreaElement>('import-string').value = await navigator.clipboard.readText(); } catch { status('Paste into the field manually using Ctrl+V or Command+V.'); el<HTMLTextAreaElement>('import-string').focus(); } };
-  el<HTMLButtonElement>('apply-import').onclick = () => {
-    try { const imported = parseGrid(el<HTMLTextAreaElement>('import-string').value); checkpoint(); puzzle = imported; save(); draw(); el('import-panel').hidden = true; status('Grid imported.'); if (puzzle.values.some(Boolean)) run('analyze'); }
-    catch (e) { status((e as Error).message,true); }
   };
   draw(); if (puzzle.generation) run('analyze');
 }

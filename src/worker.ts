@@ -1,10 +1,13 @@
-import { DEFAULT_GENERATION_OPTIONS, dig, generate, solve } from './sudoku';
+import { DEFAULT_GENERATION_OPTIONS, dig, generate, solve, findSolutions } from './sudoku';
 import { walkthrough } from './walkthrough';
 self.onmessage = (event: MessageEvent) => {
   try {
     const { type, values, regions, givens } = event.data;
     const options = { ...DEFAULT_GENERATION_OPTIONS, ...event.data.options };
-    if (type === 'generate' || type === 'custom') {
+    if (type === 'import') {
+      const solutions = findSolutions(values, regions);
+      self.postMessage({ type: 'imported', solutions, walkthrough: solutions.length === 1 ? walkthrough({ values, regions, givens }) : null });
+    } else if (type === 'generate' || type === 'custom') {
       const started = performance.now();
       const customSolution = type === 'custom' ? solve(Array(81).fill(0), regions) : null;
       if (type === 'custom' && !customSolution) throw new Error('These regions admit no Sudoku solution. Adjust the boundaries and try again.');

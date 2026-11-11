@@ -46,6 +46,15 @@ export function candidates(values: Board, regions: Board, i: number): number[] {
 export class SearchLimitError extends Error { constructor() { super('The search limit was reached. Try adding more digits or generating another layout.'); } }
 /** Exact solution count, stopping as soon as two completions are found. */
 export function countSolutions(values: Board, regions: Board): number {
+  return searchSolutions(values, regions);
+}
+/** Return up to two distinct completions, preserving the original clues. */
+export function findSolutions(values: Board, regions: Board): Board[] {
+  const solutions: Board[] = [];
+  searchSolutions(values, regions, solutions);
+  return solutions;
+}
+function searchSolutions(values: Board, regions: Board, solutions?: Board[]): number {
   if (!validRegions(regions) || values.length !== 81 || values.some(v => !Number.isInteger(v) || v < 0 || v > 9)) throw new Error('Invalid grid or region map.');
   const board = [...values], rows = new Int32Array(9), cols = new Int32Array(9), areas = new Int32Array(9);
   for (let i = 0; i < 81; i++) if (board[i]) {
@@ -62,7 +71,7 @@ export function countSolutions(values: Board, regions: Board): number {
       if (!n) return;
       if (n < count) { best = i; mask = m; count = n; if (n === 1) break; }
     }
-    if (best === -1) { found++; return; }
+    if (best === -1) { found++; solutions?.push([...board]); return; }
     const r = Math.floor(best / 9), c = best % 9, a = regions[best];
     for (let d = 1; d <= 9 && found < 2; d++) if (mask & (1 << d)) {
       const bit = 1 << d; board[best] = d; rows[r] |= bit; cols[c] |= bit; areas[a] |= bit;
