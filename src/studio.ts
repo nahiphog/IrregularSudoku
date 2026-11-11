@@ -1,6 +1,6 @@
 import { gridImage, serializeGrid } from './clipboard';
 import { mountWalkthrough } from './walkthrough-view';
-import { hardestTechnique, type Walkthrough } from './walkthrough';
+import type { Walkthrough } from './walkthrough';
 import { classicRegions, validRegions, type Puzzle } from './sudoku';
 import { gridMarkup } from './grid-view';
 
@@ -27,13 +27,23 @@ export function renderStudio(main: HTMLElement) {
   function draw() {
     board.classList.toggle('no-colors', !colors); board.innerHTML = gridMarkup(visiblePuzzle(), showCandidates);
     const trace = traceCache.get(key());
-    const attributes = busy || !puzzle.values.some(Boolean) ? [] : [
-      `Difficulty: ${trace?.score ?? 'Not analyzed'}`,
-      ...(trace ? [`Hardest technique: ${hardestTechnique(trace).replace(/ \(\d+ points\)$/, '')}`] : []),
-      `Givens: ${(puzzle.givens ?? puzzle.values).filter(Boolean).length}`,
-      ...(puzzle.generation ? [`Elapsed time: ${(puzzle.generation.elapsedMs / 1000).toFixed(2)}s`] : [])
+    const hardest = trace?.steps.reduce<(typeof trace.steps)[number] | undefined>((best, step) => !best || step.score > best.score ? step : best, undefined);
+    const attributes: [string, string][] = busy || !puzzle.values.some(Boolean) ? [] : [
+      ['Difficulty', String(trace?.score ?? 'Not analyzed')],
+      ...(trace ? [['Hardest technique', hardest?.technique ?? 'None (already complete)'] as [string, string]] : []),
+      ['Givens', String((puzzle.givens ?? puzzle.values).filter(Boolean).length)],
+      ...(puzzle.generation ? [['Elapsed time', `${(puzzle.generation.elapsedMs / 1000).toFixed(2)}s`] as [string, string]] : [])
     ];
-    el('generation-stats').replaceChildren(...attributes.map(text => { const row = document.createElement('div'); row.textContent = text; return row; }));
+    el('generation-stats').replaceChildren();
+    if (attributes.length) {
+      const table = document.createElement('table'), body = document.createElement('tbody');
+      table.className = 'puzzle-attributes'; table.setAttribute('aria-label', 'Puzzle attributes');
+      for (const [label, value] of attributes) {
+        const row = document.createElement('tr'), heading = document.createElement('th'), cell = document.createElement('td');
+        heading.scope = 'row'; heading.textContent = label; cell.textContent = value; row.append(heading, cell); body.append(row);
+      }
+      table.append(body); el('generation-stats').append(table);
+    }
     for (const id of ['generate','solve','copy-string','copy-image','symmetric-regions','paired-digging','require-logical']) el<HTMLButtonElement>(id).disabled = busy;
     el<HTMLButtonElement>('solve').disabled = busy || !trace;
     el('solve').textContent = revealed ? 'Hide solution' : 'Reveal solution';
