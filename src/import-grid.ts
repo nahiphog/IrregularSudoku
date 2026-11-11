@@ -9,7 +9,7 @@ function copyButtons(target: string, label: string): string {
 }
 export function renderImport(main: HTMLElement) {
   document.title = 'Import grid — Irregular Sudoku';
-  main.innerHTML = `<h1 class="page-title">Import grid</h1><section class="import-form"><label for="import-string">Paste your 162-character grid string</label><p class="copy-help">81 region IDs (1–9), followed by 81 cell digits (0 = blank).</p><textarea id="import-string" rows="4" spellcheck="false"></textarea><div class="copy-actions"><button id="paste-string">Paste clipboard</button><button id="apply-import">Import grid</button></div><button id="import-cancel" class="wide-button" hidden>Cancel</button><p id="import-status" role="status" aria-live="polite"></p><label><input id="import-colors" type="checkbox" checked/> Region colors</label></section><section id="import-editor-host"></section><section id="import-result" hidden><h2>Imported puzzle</h2><div id="import-board" class="board import-board" role="group" aria-label="Imported puzzle"></div>${copyButtons("imported", "imported puzzle")}<div id="import-solutions"></div></section><div id="import-copy-fallback" hidden><label for="import-copy-text">Copy this 162-character string:</label><textarea id="import-copy-text" readonly rows="4"></textarea></div><div id="import-walkthrough" hidden></div>`;
+  main.innerHTML = `<h1 class="page-title">Import grid</h1><section class="import-form"><label for="import-string">Paste your 162-character grid string</label><p class="copy-help">81 region IDs (1–9), followed by 81 cell digits (0 = blank).</p><textarea id="import-string" rows="4" spellcheck="false"></textarea><div class="copy-actions"><button id="paste-string">Paste clipboard</button><button id="apply-import">Import grid</button><button id="clear-input" type="button">Clear input</button></div><button id="import-cancel" class="wide-button" hidden>Cancel</button><p id="import-status" role="status" aria-live="polite"></p><label><input id="import-colors" type="checkbox" checked/> Region colors</label></section><section id="import-editor-host"></section><section id="import-result" hidden><h2>Imported puzzle</h2><div id="import-board" class="board import-board" role="group" aria-label="Imported puzzle"></div>${copyButtons("imported", "imported puzzle")}<div id="import-solutions"></div></section><div id="import-copy-fallback" hidden><label for="import-copy-text">Copy this 162-character string:</label><textarea id="import-copy-text" readonly rows="4"></textarea></div><div id="import-walkthrough" hidden></div>`;
   const el = <T extends HTMLElement>(id: string) => main.querySelector<T>(`#${id}`)!;
   let worker: Worker | null = null, puzzle: Puzzle | null = null, solutions: Board[] = [];
   const view = mountWalkthrough(el('import-walkthrough'), check);
@@ -85,6 +85,11 @@ export function renderImport(main: HTMLElement) {
   };
   el<HTMLButtonElement>('import-cancel').onclick = () => { finish(); status('Check cancelled.'); };
   el<HTMLInputElement>('import-colors').onchange = () => { editor.setColors(el<HTMLInputElement>('import-colors').checked); draw(); };
+  el<HTMLButtonElement>('clear-input').onclick = () => {
+    const input = el<HTMLTextAreaElement>('import-string');
+    input.value = '';
+    input.focus();
+  };
   el<HTMLButtonElement>('paste-string').onclick = async () => {
     try { el<HTMLTextAreaElement>('import-string').value = await navigator.clipboard.readText(); }
     catch { status('Paste into the field using Ctrl+V or Command+V.'); el('import-string').focus(); }
