@@ -1,5 +1,6 @@
 import { candidates, conflicts, countSolutions, units, validRegions, type Board, type Puzzle } from './sudoku';
 import { TECHS, LEVELS, LEVEL_MAX_SCORE, type Level, type Tech } from '../vendor/sudokui/engine/ratings';
+import { findIrregularLockedCandidates, IRREGULAR_LOCKED } from './irregular-techniques';
 
 export interface SolveStep {
   technique: string; explanation: string; level: Level | 'Search-assisted'; score: number;
@@ -24,12 +25,12 @@ export function walkthrough(puzzle: Puzzle, progress?: (steps: number) => void, 
   const values = [...puzzle.values], houses = units(puzzle.regions);
   let notes = values.map((_, i) => candidates(values, puzzle.regions, i));
   const result: Walkthrough = { initial: [...values], givens: [...(puzzle.givens ?? values)], regions: [...puzzle.regions], initialCandidates: notes.map(a => [...a]), steps: [], rating: 'Easy', score: 0, searchSteps: 0 };
-  function record(tech: Tech | 'SEARCH', explanation: string, pattern: number[], removed: SolveStep['removed'] = [], placed?: SolveStep['placed']) {
+  function record(tech: Tech | 'SEARCH' | 'IRREGULAR_LOCKED', explanation: string, pattern: number[], removed: SolveStep['removed'] = [], placed?: SolveStep['placed']) {
     if (placed) {
       values[placed.cell] = placed.digit;
       notes = notes.map((list, i) => values[i] ? [] : list.filter(d => candidates(values, puzzle.regions, i).includes(d)));
     } else for (const { cell, digit } of removed) notes[cell] = notes[cell].filter(d => d !== digit);
-    const info = tech === 'SEARCH' ? { name: 'Brute force', level: 'Search-assisted' as const, score: 10000 } : TECHS[tech];
+    const info = tech === 'SEARCH' ? { name: 'Brute force', level: 'Search-assisted' as const, score: 10000 } : tech === 'IRREGULAR_LOCKED' ? IRREGULAR_LOCKED : TECHS[tech];
     result.steps.push({ technique: info.name, explanation, level: info.level, score: info.score, values: [...values], candidates: notes.map(a => [...a]), pattern: [...pattern], affected: placed ? [placed.cell] : [...new Set(removed.map(r => r.cell))], placed, removed });
     result.score += info.score;
     if (tech === 'SEARCH') result.searchSteps++;
@@ -61,6 +62,12 @@ export function walkthrough(puzzle: Puzzle, progress?: (steps: number) => void, 
       }
     }
     if (changed) continue;
+    const irregularLocked = findIrregularLockedCandidates(puzzle.regions, notes);
+    if (irregularLocked) {
+      const { region, digit, places, removed } = irregularLocked;
+      record('IRREGULAR_LOCKED', `${digit} must occupy one of ${places.map(coord).join(', ')} in region ${region + 1}. Each of ${removed.map(({ cell }) => coord(cell)).join(', ')} sees every possible location through a shared row or column, so none can contain ${digit}. Remove candidate ${digit} from those cells.`, places, removed);
+      continue;
+    }
     for (const size of [2, 3, 4]) {
       for (let u = 0; u < 27 && !changed; u++) for (const group of combinations(houses[u].filter(i => notes[i].length >= 2 && notes[i].length <= size), size)) {
         const digits = [...new Set(group.flatMap(i => notes[i]))];
