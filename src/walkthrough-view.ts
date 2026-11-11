@@ -45,7 +45,16 @@ export function mountWalkthrough(host: HTMLElement, analyze: () => void) {
           trace.steps.forEach((step, i) => { const entry = tally.get(step.technique) ?? { score: step.score, steps: [] }; entry.steps.push(i + 1); tally.set(step.technique, entry); });
           el('walk-summary').replaceChildren(...[...tally].sort((a, b) => a[1].score - b[1].score || a[0].localeCompare(b[0])).map(([name, entry]) => {
             const row = document.createElement('tr'), technique = document.createElement('th'), steps = document.createElement('td');
-            technique.scope = 'row'; technique.textContent = name; steps.textContent = entry.steps.join(', '); row.append(technique, steps); return row;
+            technique.scope = 'row'; technique.textContent = name;
+            entry.steps.forEach((stepNumber, i) => {
+              if (i) steps.append(', ');
+              const button = document.createElement('button');
+              button.type = 'button'; button.className = 'tally-step'; button.textContent = String(stepNumber);
+              button.setAttribute('aria-label', `Go to step ${stepNumber}: ${name}`);
+              button.onclick = () => { move(stepNumber); slider.focus({ preventScroll: true }); slider.scrollIntoView({ block: 'center' }); };
+              steps.append(button);
+            });
+            row.append(technique, steps); return row;
           }));
           render();
         }
