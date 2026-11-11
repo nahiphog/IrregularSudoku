@@ -21,3 +21,5 @@
 .tally-step[aria-current="step"]{background:var(--green);color:#fff;font-weight:700;text-decoration:none;box-shadow:0 0 0 1px var(--green)}
 
 .puzzle-attributes{width:100%;border-collapse:collapse;text-align:left}.puzzle-attributes th,.puzzle-attributes td{padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}.puzzle-attributes th{font-weight:600;width:42%;color:var(--green)}.puzzle-attributes td{overflow-wrap:anywhere}.puzzle-attributes tr:last-child>*{border-bottom:0}
+
+.animated-logo{display:inline-block;position:relative;vertical-align:middle;flex-shrink:0;width:38px;height:38px;margin-right:10px}.animated-logo>img,.animated-logo>span{position:absolute;inset:0;width:100%;height:100%}.animated-logo>span{visibility:hidden}.animated-logo.is-playing>span{visibility:visible}.animated-logo.is-playing>img{visibility:hidden}
