@@ -57,6 +57,11 @@ export function mountImportEditor(host: HTMLElement, onChange: () => void) {
   draw();
   return {
     puzzle:()=>puzzleFromEdges(edges,values),
+    reset(){
+      edges.clear(); values.fill(0); history.length=0; selected=0; painting=false; mode='edges';
+      host.querySelectorAll<HTMLInputElement>('[name="import-mode"]').forEach(input=>input.checked=input.value===mode);
+      changed();
+    },
     load(puzzle:Puzzle){checkpoint();edges=edgesFromRegions(puzzle.regions);values=[...puzzle.values];changed();},
     setColors(enabled:boolean){colors=enabled;draw();}
   };

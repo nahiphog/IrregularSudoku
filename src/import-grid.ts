@@ -17,6 +17,8 @@ export function renderImport(main: HTMLElement) {
   const editor = mountImportEditor(el('import-editor-host'), () => {
     finish(); puzzle = null; solutions = [];
     el('import-result').hidden = true; el('import-walkthrough').hidden = true; el('import-copy-fallback').hidden = true;
+    el('import-board').replaceChildren(); el('import-solutions').replaceChildren();
+    el<HTMLTextAreaElement>('import-copy-text').value = '';
     view.update(null, false, el<HTMLInputElement>('import-colors').checked);
     try { el<HTMLTextAreaElement>('import-string').value = serializeGrid(editor.puzzle()); } catch { el<HTMLTextAreaElement>('import-string').value = ''; }
     status('Grid edited. Check puzzle to update its solutions.');
@@ -31,6 +33,7 @@ export function renderImport(main: HTMLElement) {
     main.querySelectorAll('#import-walkthrough .board').forEach(board => board.classList.toggle('no-colors', !colors));
   }
   function finish() {
+    if (worker) { worker.onmessage = null; worker.onerror = null; }
     worker?.terminate(); worker = null;
     el<HTMLButtonElement>('apply-import').disabled = false;
     el<HTMLButtonElement>('check-editor').disabled = false;
@@ -86,8 +89,10 @@ export function renderImport(main: HTMLElement) {
   el<HTMLButtonElement>('import-cancel').onclick = () => { finish(); status('Check cancelled.'); };
   el<HTMLInputElement>('import-colors').onchange = () => { editor.setColors(el<HTMLInputElement>('import-colors').checked); draw(); };
   el<HTMLButtonElement>('clear-input').onclick = () => {
+    editor.reset();
     const input = el<HTMLTextAreaElement>('import-string');
     input.value = '';
+    status('Input and grid cleared.');
     input.focus();
   };
   el<HTMLButtonElement>('paste-string').onclick = async () => {
