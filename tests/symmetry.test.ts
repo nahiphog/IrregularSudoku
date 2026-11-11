@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { classicRegions, countSolutions, DEFAULT_GENERATION_OPTIONS, dig, generate, partition, rotationallySymmetric, units, validRegions } from '../src/sudoku.ts';
 function random(seed: number) { return () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; }; }
 
-test('both UI generation options default to enabled', () => {
-  assert.deepEqual(DEFAULT_GENERATION_OPTIONS, { symmetricRegions: true, pairedDigging: true });
+test('all UI generation options default to enabled', () => {
+  assert.deepEqual(DEFAULT_GENERATION_OPTIONS, { symmetricRegions: true, pairedDigging: true, requireLogicalSolve: true });
 });
 test('symmetric partitions preserve boundaries under rotation across 40 seeds', () => {
   const layouts = new Set<string>();

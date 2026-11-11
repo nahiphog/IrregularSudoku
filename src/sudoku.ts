@@ -3,7 +3,7 @@ export interface Puzzle { regions: Board; values: Board; givens?: Board; generat
 /** Legacy/imported grids without provenance treat their current digits as clues. */
 export const isGiven = (puzzle: Puzzle, cell: number): boolean => !!puzzle.values[cell] && (puzzle.givens ?? puzzle.values)[cell] === puzzle.values[cell];
 export const classicRegions = () => Array.from({ length: 81 }, (_, i) => Math.floor(i / 27) * 3 + Math.floor((i % 9) / 3));
-export const DEFAULT_GENERATION_OPTIONS = { symmetricRegions: true, pairedDigging: true };
+export const DEFAULT_GENERATION_OPTIONS = { symmetricRegions: true, pairedDigging: true, requireLogicalSolve: true };
 /** Symmetry concerns the region boundaries, not the arbitrary region labels. */
 export function rotationallySymmetric(regions: Board): boolean {
   if (!validRegions(regions)) return false;
@@ -86,7 +86,7 @@ function searchSolutions(values: Board, regions: Board, solutions?: Board[]): nu
  * (not a global minimum clue count).
  * No search cutoff: an inconclusive search must never be treated as uniqueness.
  */
-export function dig(puzzle: Puzzle, random = Math.random, progress?: (values: Board, tested: number) => void, paired = false, required: boolean[] = Array(81).fill(false)): Puzzle {
+export function dig(puzzle: Puzzle, random = Math.random, progress?: (values: Board, tested: number) => void, paired = false, required: boolean[] = Array(81).fill(false), accept?: (puzzle: Puzzle) => boolean): Puzzle {
   if (required.length !== 81 || required.some(v => typeof v !== 'boolean')) throw new Error('Expected 81 required-cell flags.');
   if (puzzle.values.some(v => !v) || countSolutions(puzzle.values, puzzle.regions) !== 1) throw new Error('Digging requires a valid completed grid.');
   const values = [...puzzle.values];
@@ -97,7 +97,7 @@ export function dig(puzzle: Puzzle, random = Math.random, progress?: (values: Bo
     if (group.some(cell => required[cell])) { tested += group.length; progress?.([...values], tested); continue; }
     const saved = group.map(cell => values[cell]);
     group.forEach(cell => values[cell] = 0);
-    if (countSolutions(values, puzzle.regions) !== 1) group.forEach((cell, j) => values[cell] = saved[j]);
+    if (countSolutions(values, puzzle.regions) !== 1 || (accept && !accept({ regions: puzzle.regions, values }))) group.forEach((cell, j) => values[cell] = saved[j]);
     tested += group.length;
     progress?.([...values], tested);
   }

@@ -16,7 +16,7 @@ export function parseGrid(text: string): Puzzle {
 
 const palette = ['#eef0df', '#f5e9dc', '#e5ede5', '#e4ecee', '#f4efdc', '#eee5e5', '#e9e6ef', '#e3ede0', '#f0e7dc'];
 /** Draw directly from puzzle data: no selection, candidates or UI chrome. */
-export function gridImage(puzzle: Puzzle, colors: boolean): Promise<Blob> {
+export function gridImage(puzzle: Puzzle, colors: boolean, differences: ReadonlySet<number> = new Set()): Promise<Blob> {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 936;
   const ctx = canvas.getContext('2d');
@@ -37,5 +37,9 @@ export function gridImage(puzzle: Puzzle, colors: boolean): Promise<Blob> {
     line(x, y, x, y + size, i % 9 === 0 || puzzle.regions[i] !== puzzle.regions[i - 1]);
   }
   line(pad, pad + 900, pad + 900, pad + 900, true); line(pad + 900, pad, pad + 900, pad + 900, true);
+  for (const i of differences) {
+    ctx.beginPath(); ctx.strokeStyle = '#a23930'; ctx.lineWidth = 4;
+    ctx.arc(pad + i % 9 * size + size / 2, pad + Math.floor(i / 9) * size + size / 2, size * 0.39, 0, Math.PI * 2); ctx.stroke();
+  }
   return new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not create the grid image.')), 'image/png'));
 }

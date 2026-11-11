@@ -18,7 +18,7 @@ function combinations(a: number[], n: number): number[][] {
   return a.flatMap((v, i) => combinations(a.slice(i + 1), n - 1).map(rest => [v, ...rest]));
 }
 /** Pure region-aware deductions. Classic box-dependent finders are not invoked. */
-export function walkthrough(puzzle: Puzzle, progress?: (steps: number) => void): Walkthrough {
+export function walkthrough(puzzle: Puzzle, progress?: (steps: number) => void, allowSearch = true): Walkthrough {
   if (!validRegions(puzzle.regions) || puzzle.values.length !== 81 || puzzle.values.some(v => !Number.isInteger(v) || v < 0 || v > 9) || conflicts(puzzle.values, puzzle.regions).size) throw new Error('Correct the grid before building a walkthrough.');
   if (countSolutions(puzzle.values, puzzle.regions) !== 1) throw new Error('A rated walkthrough requires exactly one solution. This grid has zero or multiple solutions.');
   const values = [...puzzle.values], houses = units(puzzle.regions);
@@ -84,6 +84,7 @@ export function walkthrough(puzzle: Puzzle, progress?: (steps: number) => void):
       if (changed) break;
     }
     if (changed) continue;
+    if (!allowSearch) throw new LogicalSolveError();
     // Explicit search, never disguised as a human technique or a proven minimum difficulty.
     const cell = notes.reduce((best, ns, i) => ns.length && (best < 0 || ns.length < notes[best].length) ? i : best, -1);
     if (cell < 0) throw new Error('Walkthrough encountered an inconsistent candidate state.');
@@ -102,4 +103,16 @@ export function walkthrough(puzzle: Puzzle, progress?: (steps: number) => void):
     result.rating = level;
   }
   return result;
+}
+
+export class LogicalSolveError extends Error { constructor() { super('The supported logical techniques cannot complete this puzzle.'); } }
+export function hasCompleteLogicalSolve(puzzle: Puzzle): boolean {
+  try { walkthrough(puzzle, undefined, false); return true; }
+  catch (error) { if (error instanceof LogicalSolveError) return false; throw error; }
+}
+export function hardestTechnique(trace: Walkthrough): string {
+  if (!trace.steps.length) return 'None (already complete)';
+  const score = Math.max(...trace.steps.map(step => step.score));
+  const names = [...new Set(trace.steps.filter(step => step.score === score).map(step => step.technique))];
+  return names.join(', ') + ' (' + score + ' points)';
 }
