@@ -8,7 +8,8 @@ self.onmessage = () => {
     const puzzle = dig(generate(Math.random, undefined, true), Math.random, undefined, true);
     const elapsedMs = performance.now() - started;
     const trace = walkthrough(puzzle);
-    self.postMessage({ type: 'result', puzzle, elapsedMs, score: trace.score, searchSteps: trace.searchSteps });
+    const hardest = trace.steps.reduce<(typeof trace.steps)[number] | undefined>((best, step) => !best || step.score > best.score ? step : best, undefined);
+    self.postMessage({ type: 'result', puzzle, elapsedMs, score: trace.score, searchSteps: trace.searchSteps, hardestTechnique: hardest?.technique ?? 'None (already complete)' });
   } catch (error) {
     self.postMessage({ type: 'error', message: error instanceof Error ? error.message : 'Trial failed.' });
   }

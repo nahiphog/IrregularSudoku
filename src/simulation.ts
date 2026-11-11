@@ -2,7 +2,7 @@ import { gridMarkup } from './grid-view';
 import { parseGrid, serializeGrid, gridImage } from './clipboard';
 import { histogramBins, matchesSimulation } from './simulation-stats';
 
-interface Result { id: number; trial: number; grid: string; score: number; elapsedMs: number; displayedAt: string; }
+interface Result { id: number; trial: number; grid: string; score: number; hardestTechnique: string; elapsedMs: number; displayedAt: string; }
 const PAGE_SIZE = 12;
 
 export function renderSimulation(main: HTMLElement) {
@@ -65,7 +65,7 @@ export function renderSimulation(main: HTMLElement) {
     visibleResults=new Map(rows.map(result=>[result.id,result]));
     el('sim-results').innerHTML=rows.map(result=>{
       const puzzle=parseGrid(result.grid);
-      return `<article class="simulation-result"><h3>Trial ${result.trial.toLocaleString()}</h3><div class="board" role="group" aria-label="Puzzle from trial ${result.trial}">${gridMarkup(puzzle)}</div><table class="puzzle-attributes"><tbody><tr><th scope="row">Elapsed time</th><td>${(result.elapsedMs/1000).toFixed(2)}s</td></tr><tr><th scope="row">Givens</th><td>${puzzle.values.filter(Boolean).length}</td></tr><tr><th scope="row">Difficulty</th><td>${result.score}</td></tr><tr><th scope="row">Displayed at</th><td>${new Date(result.displayedAt).toLocaleString()}</td></tr></tbody></table><div class="copy-actions" role="group" aria-label="Copy trial ${result.trial}"><button data-copy="${result.id}" data-format="string">Copy string</button><button data-copy="${result.id}" data-format="image">Copy image</button></div></article>`;
+      return `<article class="simulation-result"><h3>Trial ${result.trial.toLocaleString()}</h3><div class="board" role="group" aria-label="Puzzle from trial ${result.trial}">${gridMarkup(puzzle)}</div><table class="puzzle-attributes"><tbody><tr><th scope="row">Elapsed time</th><td>${(result.elapsedMs/1000).toFixed(2)}s</td></tr><tr><th scope="row">Givens</th><td>${puzzle.values.filter(Boolean).length}</td></tr><tr><th scope="row">Difficulty</th><td>${result.score}</td></tr><tr><th scope="row">Hardest technique</th><td>${result.hardestTechnique}</td></tr><tr><th scope="row">Displayed at</th><td>${new Date(result.displayedAt).toLocaleString()}</td></tr></tbody></table><div class="copy-actions" role="group" aria-label="Copy trial ${result.trial}"><button data-copy="${result.id}" data-format="string">Copy string</button><button data-copy="${result.id}" data-format="image">Copy image</button></div></article>`;
     }).join('');update();
   }
   function stop(message: string) {running=false;worker?.terminate();worker=null;update();status(message);}
@@ -93,7 +93,7 @@ export function renderSimulation(main: HTMLElement) {
         completed++;counts.set(data.score,(counts.get(data.score)??0)+1);chart();
         try {
           if(matchesSimulation(data.score,data.searchSteps,minimum,logicalOnly)) {
-            const result:Result={id:matching+1,trial:completed+failed,grid:serializeGrid(data.puzzle),score:data.score,elapsedMs:data.elapsedMs,displayedAt:new Date().toISOString()};
+            const result:Result={id:matching+1,trial:completed+failed,grid:serializeGrid(data.puzzle),score:data.score,hardestTechnique:data.hardestTechnique,elapsedMs:data.elapsedMs,displayedAt:new Date().toISOString()};
             await save(result);
             if(epoch!==run) return;
             matching++;
