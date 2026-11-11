@@ -14,6 +14,10 @@ export function mountWalkthrough(host: HTMLElement, analyze: () => void) {
     el('walk-explanation').textContent = step?.explanation ?? 'These are the starting givens. Small digits show every currently possible candidate. Move forward to see the first deduction.';
     el('walk-step-rating').textContent = step ? `Step difficulty: ${step.level} · ${step.score} points` : 'No deductions applied yet.';
     slider.value = String(index); slider.max = String(trace.steps.length);
+    el('walk-summary').querySelectorAll<HTMLButtonElement>('.tally-step').forEach(button => {
+      if (Number(button.dataset.step) === index) button.setAttribute('aria-current', 'step');
+      else button.removeAttribute('aria-current');
+    });
     slider.setAttribute('aria-valuetext', `Step ${index} of ${trace.steps.length}: ${step?.technique ?? 'Original puzzle'}`);
     for (const id of ['walk-start', 'walk-prev']) el<HTMLButtonElement>(id).disabled = index === 0;
     for (const id of ['walk-next', 'walk-end']) el<HTMLButtonElement>(id).disabled = index === trace.steps.length;
@@ -50,6 +54,7 @@ export function mountWalkthrough(host: HTMLElement, analyze: () => void) {
               if (i) steps.append(', ');
               const button = document.createElement('button');
               button.type = 'button'; button.className = 'tally-step'; button.textContent = String(stepNumber);
+              button.dataset.step = String(stepNumber);
               button.setAttribute('aria-label', `Go to step ${stepNumber}: ${name}`);
               button.onclick = () => { move(stepNumber); slider.focus({ preventScroll: true }); slider.scrollIntoView({ block: 'center' }); };
               steps.append(button);

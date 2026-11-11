@@ -18,3 +18,4 @@
 
 .technique-tally{width:100%;border-collapse:collapse;margin:28px 0;font-size:13px;table-layout:fixed}.technique-tally caption{text-align:left;font-size:18px;font-weight:600;margin-bottom:14px}.technique-tally th,.technique-tally td{text-align:left;vertical-align:top;border-bottom:1px solid var(--line);padding:12px;line-height:1.8;overflow-wrap:anywhere}.technique-tally th:first-child{width:35%}.technique-tally tbody th{font-weight:500}
 .tally-step{border:0;background:transparent;padding:2px 4px;color:var(--green);text-decoration:underline;text-underline-offset:3px;font:inherit}.tally-step:hover{background:#e4ece5}.tally-step:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.tally-step[aria-current="step"]{background:var(--green);color:#fff;font-weight:700;text-decoration:none;box-shadow:0 0 0 1px var(--green)}
