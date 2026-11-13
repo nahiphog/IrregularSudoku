@@ -1,4 +1,5 @@
 import './style.css';
+import { PHISTOMEFEL } from './phistomefel';
 import { IRREGULAR_LOCKED } from './irregular-techniques';
 import { mountAnimatedLogo } from './logo';
 import { renderSimulation } from './simulation';
@@ -32,7 +33,8 @@ document.querySelectorAll<HTMLAnchorElement>('a[href^="/"]').forEach(a => {
 function renderGuide() {
   document.title = 'Techniques — Irregular Sudoku';
   const irregularRow = '<li class="technique-row"><span class="tech-title">' + IRREGULAR_LOCKED.name + '</span><span class="badge">55</span><span class="tech-availability">Implemented</span></li>';
-  const rows = irregularRow + ALL_TECHS.map(k => {
+  const ringRow = '<li class="technique-row"><span class="tech-title">' + PHISTOMEFEL.name + '</span><span class="badge">200</span><span class="tech-availability">Where the layout proves the ring equality</span></li>';
+  const rows = irregularRow + ringRow + ALL_TECHS.map(k => {
     const t = TECHS[k], disabled = DISABLED_FAMILIES.has(t.category) || DISABLED_TECHNIQUES.has(t.name);
     return '<li class="technique-row' + (disabled ? ' technique-disabled' : '') + '"><span class="tech-title">' + esc(t.name) + '</span><span class="badge">' + t.level + '</span><span class="tech-availability">' + (disabled ? 'Temporarily disabled' : !t.implemented ? 'Reference only' : !t.enabled ? 'Disabled' : '') + '</span></li>';
   }).join('');

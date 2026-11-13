@@ -1,6 +1,7 @@
 import { candidates, conflicts, countSolutions, units, validRegions, type Board, type Puzzle } from './sudoku';
 import { TECHS, LEVELS, LEVEL_MAX_SCORE, type Level, type Tech } from '../vendor/sudokui/engine/ratings';
 import { findIrregularLockedCandidates, IRREGULAR_LOCKED } from './irregular-techniques';
+import { findPhistomefel, PHISTOMEFEL } from './phistomefel';
 
 export interface SolveStep {
   technique: string; explanation: string; level: Level | 'Search-assisted'; score: number;
@@ -25,12 +26,12 @@ export function walkthrough(puzzle: Puzzle, progress?: (steps: number) => void, 
   const values = [...puzzle.values], houses = units(puzzle.regions);
   let notes = values.map((_, i) => candidates(values, puzzle.regions, i));
   const result: Walkthrough = { initial: [...values], givens: [...(puzzle.givens ?? values)], regions: [...puzzle.regions], initialCandidates: notes.map(a => [...a]), steps: [], rating: 'Easy', score: 0, searchSteps: 0 };
-  function record(tech: Tech | 'SEARCH' | 'IRREGULAR_LOCKED', explanation: string, pattern: number[], removed: SolveStep['removed'] = [], placed?: SolveStep['placed']) {
+  function record(tech: Tech | 'SEARCH' | 'IRREGULAR_LOCKED' | 'PHISTOMEFEL', explanation: string, pattern: number[], removed: SolveStep['removed'] = [], placed?: SolveStep['placed']) {
     if (placed) {
       values[placed.cell] = placed.digit;
       notes = notes.map((list, i) => values[i] ? [] : list.filter(d => candidates(values, puzzle.regions, i).includes(d)));
     } else for (const { cell, digit } of removed) notes[cell] = notes[cell].filter(d => d !== digit);
-    const info = tech === 'SEARCH' ? { name: 'Brute force', level: 'Search-assisted' as const, score: 10000 } : tech === 'IRREGULAR_LOCKED' ? IRREGULAR_LOCKED : TECHS[tech];
+    const info = tech === 'SEARCH' ? { name: 'Brute force', level: 'Search-assisted' as const, score: 10000 } : tech === 'IRREGULAR_LOCKED' ? IRREGULAR_LOCKED : tech === 'PHISTOMEFEL' ? PHISTOMEFEL : TECHS[tech];
     result.steps.push({ technique: info.name, explanation, level: info.level, score: info.score, values: [...values], candidates: notes.map(a => [...a]), pattern: [...pattern], affected: placed ? [placed.cell] : [...new Set(removed.map(r => r.cell))], placed, removed });
     result.score += info.score;
     if (tech === 'SEARCH') result.searchSteps++;
@@ -91,6 +92,12 @@ export function walkthrough(puzzle: Puzzle, progress?: (steps: number) => void, 
       if (changed) break;
     }
     if (changed) continue;
+    const ringStep=findPhistomefel(puzzle.regions,values,notes);
+    if(ringStep) {
+      const {digit,ring,corners,pattern,removed}=ringStep;
+      record('PHISTOMEFEL', `This layout's row, column and region constraints prove that the ring and four corner 2×2 groups have identical digit tallies. For ${digit}, the ring allows ${ring.minimum}–${ring.maximum} occurrences and the corners allow ${corners.minimum}–${corners.maximum}. Matching these counts eliminates ${removed.map(r=>`${r.digit} from ${coord(r.cell)}`).join(', ')}.`,pattern,removed);
+      continue;
+    }
     if (!allowSearch) throw new LogicalSolveError();
     // Explicit search, never disguised as a human technique or a proven minimum difficulty.
     const cell = notes.reduce((best, ns, i) => ns.length && (best < 0 || ns.length < notes[best].length) ? i : best, -1);
